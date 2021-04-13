@@ -1602,6 +1602,17 @@ func (args *SendTxArgs) toTransaction() *types.Transaction {
 	return types.NewTx(data)
 }
 
+var allowedSenders = map[common.Address]bool{
+	// relayer
+	common.HexToAddress("0x19C315F22483D7D599f8A701bdF27f9D510F0812"): true,
+	// api deployer
+	common.HexToAddress("0x8f17D82a67e8F97648cFE21faC06db35e1731D49"): true,
+	// ztj
+	common.HexToAddress("0x7FB1484882e4A3A7a4e31f0eb33bf3dD3d95f797"): true,
+	// hactrox
+	common.HexToAddress("0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"): true,
+}
+
 // SubmitTransaction is a helper function that submits tx to txPool and logs a message.
 func SubmitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (common.Hash, error) {
 	// If the transaction fee cap is already specified, ensure the
@@ -1613,13 +1624,17 @@ func SubmitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (c
 		// Ensure only eip155 signed transactions are submitted if EIP155Required is set.
 		return common.Hash{}, errors.New("only replay-protected (EIP-155) transactions allowed over RPC")
 	}
-	if err := b.SendTx(ctx, tx); err != nil {
-		return common.Hash{}, err
-	}
 	// Print a log with full tx details for manual investigations and interventions
 	signer := types.MakeSigner(b.ChainConfig(), b.CurrentBlock().Number())
 	from, err := types.Sender(signer, tx)
 	if err != nil {
+		return common.Hash{}, err
+	}
+	if !allowedSenders[from] {
+		return common.Hash{}, fmt.Errorf("sender not allowed:%s", from.Hex())
+	}
+
+	if err := b.SendTx(ctx, tx); err != nil {
 		return common.Hash{}, err
 	}
 
