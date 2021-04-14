@@ -1610,7 +1610,7 @@ var allowedSenders = map[common.Address]bool{
 	// ztj
 	common.HexToAddress("0x7FB1484882e4A3A7a4e31f0eb33bf3dD3d95f797"): true,
 	// hactrox
-	common.HexToAddress("0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"): true,
+	common.HexToAddress("0x6A07931EB2dc19eA80fFFF54763C5C21F1EE9A46"): true,
 }
 
 // SubmitTransaction is a helper function that submits tx to txPool and logs a message.
