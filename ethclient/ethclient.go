@@ -528,6 +528,16 @@ func (ec *Client) SendTransaction(ctx context.Context, tx *types.Transaction) er
 	return ec.c.CallContext(ctx, nil, "eth_sendRawTransaction", hexutil.Encode(data))
 }
 
+func (ec *Client) SendOKTransaction(ctx context.Context, tx *types.Transaction) (common.Hash, error) {
+	data, err := rlp.EncodeToBytes(tx)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	var hash common.Hash
+	err = ec.c.CallContext(ctx, &hash, "eth_sendRawTransaction", hexutil.Encode(data))
+	return hash, err
+}
+
 func toCallArg(msg ethereum.CallMsg) interface{} {
 	arg := map[string]interface{}{
 		"from": msg.From,
