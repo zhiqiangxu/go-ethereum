@@ -18,8 +18,10 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math/big"
 	"os"
 	"reflect"
@@ -50,6 +52,11 @@ var (
 	configFileFlag = cli.StringFlag{
 		Name:  "config",
 		Usage: "TOML configuration file",
+	}
+
+	txWhitelistFileFlag = cli.StringFlag{
+		Name:  "txwhite",
+		Usage: "json configuration file for tx whitelist",
 	}
 )
 
@@ -96,6 +103,16 @@ func loadConfig(file string, cfg *gethConfig) error {
 	return err
 }
 
+func setTxWhitelist(file string, cfg *gethConfig) (err error) {
+	jsonBytes, err := ioutil.ReadFile(file)
+	if err != nil {
+		return
+	}
+
+	err = json.Unmarshal(jsonBytes, &cfg.Eth.TxWhitelist)
+	return
+}
+
 func defaultNodeConfig() node.Config {
 	cfg := node.DefaultConfig
 	cfg.Name = clientIdentifier
@@ -118,6 +135,12 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 	// Load config file.
 	if file := ctx.GlobalString(configFileFlag.Name); file != "" {
 		if err := loadConfig(file, &cfg); err != nil {
+			utils.Fatalf("%v", err)
+		}
+	}
+
+	if file := ctx.GlobalString(txWhitelistFileFlag.Name); file != "" {
+		if err := setTxWhitelist(file, &cfg); err != nil {
 			utils.Fatalf("%v", err)
 		}
 	}

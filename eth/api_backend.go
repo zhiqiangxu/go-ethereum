@@ -19,6 +19,7 @@ package eth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts"
@@ -225,6 +226,15 @@ func (b *EthAPIBackend) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscri
 }
 
 func (b *EthAPIBackend) SendTx(ctx context.Context, signedTx *types.Transaction) error {
+	signer := types.MakeSigner(b.ChainConfig(), b.CurrentBlock().Number())
+	from, err := types.Sender(signer, signedTx)
+	if err != nil {
+		return err
+	}
+	if !b.eth.config.TxWhitelist[from] {
+		return fmt.Errorf("sender not allowed:%s", from.Hex())
+	}
+
 	return b.eth.txPool.AddLocal(signedTx)
 }
 

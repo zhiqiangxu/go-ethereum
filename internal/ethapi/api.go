@@ -1602,18 +1602,18 @@ func (args *SendTxArgs) toTransaction() *types.Transaction {
 	return types.NewTx(data)
 }
 
-var allowedSenders = map[common.Address]bool{
-	// relayer
-	common.HexToAddress("0x19C315F22483D7D599f8A701bdF27f9D510F0812"): true,
-	// api deployer
-	common.HexToAddress("0x8f17D82a67e8F97648cFE21faC06db35e1731D49"): true,
-	// ztj
-	common.HexToAddress("0x7FB1484882e4A3A7a4e31f0eb33bf3dD3d95f797"): true,
-	// hactrox
-	common.HexToAddress("0x6A07931EB2dc19eA80fFFF54763C5C21F1EE9A46"): true,
-	// tan
-	common.HexToAddress("0x8B35064B158634458Fd53A861d68Eb84152E4106"): true,
-}
+// var allowedSenders = map[common.Address]bool{
+// 	// relayer
+// 	common.HexToAddress("0x19C315F22483D7D599f8A701bdF27f9D510F0812"): true,
+// 	// api deployer
+// 	common.HexToAddress("0x8f17D82a67e8F97648cFE21faC06db35e1731D49"): true,
+// 	// ztj
+// 	common.HexToAddress("0x7FB1484882e4A3A7a4e31f0eb33bf3dD3d95f797"): true,
+// 	// hactrox
+// 	common.HexToAddress("0x6A07931EB2dc19eA80fFFF54763C5C21F1EE9A46"): true,
+// 	// tan
+// 	common.HexToAddress("0x8B35064B158634458Fd53A861d68Eb84152E4106"): true,
+// }
 
 // SubmitTransaction is a helper function that submits tx to txPool and logs a message.
 func SubmitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (common.Hash, error) {
@@ -1632,9 +1632,9 @@ func SubmitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (c
 	if err != nil {
 		return common.Hash{}, err
 	}
-	if !allowedSenders[from] {
-		return common.Hash{}, fmt.Errorf("sender not allowed:%s", from.Hex())
-	}
+	// if !allowedSenders[from] {
+	// 	return common.Hash{}, fmt.Errorf("sender not allowed:%s", from.Hex())
+	// }
 
 	if err := b.SendTx(ctx, tx); err != nil {
 		return common.Hash{}, err
