@@ -153,6 +153,7 @@ var (
 		utils.EWASMInterpreterFlag,
 		utils.EVMInterpreterFlag,
 		configFileFlag,
+		txWhitelistFileFlag,
 	}
 
 	rpcFlags = []cli.Flag{
