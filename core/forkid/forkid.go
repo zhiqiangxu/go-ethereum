@@ -26,10 +26,10 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/zhiqiangxu/go-ethereum/common"
+	"github.com/zhiqiangxu/go-ethereum/core/types"
+	"github.com/zhiqiangxu/go-ethereum/log"
+	"github.com/zhiqiangxu/go-ethereum/params"
 )
 
 var (

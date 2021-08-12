@@ -25,8 +25,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/rs/cors"
+	"github.com/zhiqiangxu/go-ethereum/log"
 )
 
 // NewHTTPHandlerStack returns wrapped http-related handlers

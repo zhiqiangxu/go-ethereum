@@ -22,11 +22,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/p2p/discover"
-	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/zhiqiangxu/go-ethereum/common"
+	"github.com/zhiqiangxu/go-ethereum/crypto"
+	"github.com/zhiqiangxu/go-ethereum/p2p/discover"
+	"github.com/zhiqiangxu/go-ethereum/p2p/enode"
+	"github.com/zhiqiangxu/go-ethereum/params"
 	"gopkg.in/urfave/cli.v1"
 )
 

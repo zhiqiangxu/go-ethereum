@@ -5,8 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
+	"github.com/zhiqiangxu/go-ethereum/rpc"
 )
 
 func TestNewWebsocketUpgradeHandler_websocket(t *testing.T) {
