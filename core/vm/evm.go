@@ -285,12 +285,13 @@ func (evm *EVM) CallCode(caller ContractRef, addr common.Address, input []byte, 
 		// Initialise a new contract and set the code that is to be used by the EVM.
 		// The contract is a scoped environment for this execution context only.
 		contract := NewContract(caller, AccountRef(caller.Address()), value, gas)
-		contract.SetCallCode(&addrCopy, evm.StateDB.GetCodeHash(addrCopy), evm.StateDB.GetCode(addrCopy))
+		code := evm.StateDB.GetCode(addrCopy)
+		contract.SetCallCode(&addrCopy, evm.StateDB.GetCodeHash(addrCopy), code)
 		ret, err = evm.interpreter.Run(contract, input, false)
 		gas = contract.Gas
 
 		if err == nil {
-			err = evm.checkContractStaking(contract, 0)
+			err = evm.checkContractStaking(contract, uint64(len(code)))
 		}
 	}
 	if err != nil {
@@ -329,12 +330,13 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 		addrCopy := addr
 		// Initialise a new contract and make initialise the delegate values
 		contract := NewContract(caller, AccountRef(caller.Address()), nil, gas).AsDelegate()
-		contract.SetCallCode(&addrCopy, evm.StateDB.GetCodeHash(addrCopy), evm.StateDB.GetCode(addrCopy))
+		code := evm.StateDB.GetCode(addrCopy)
+		contract.SetCallCode(&addrCopy, evm.StateDB.GetCodeHash(addrCopy), code)
 		ret, err = evm.interpreter.Run(contract, input, false)
 		gas = contract.Gas
 
 		if err == nil {
-			err = evm.checkContractStaking(contract, 0)
+			err = evm.checkContractStaking(contract, uint64(len(code)))
 		}
 	}
 	if err != nil {
@@ -403,9 +405,6 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 }
 
 func (evm *EVM) checkContractStaking(contract *Contract, codeSize uint64) error {
-	if codeSize == 0 {
-		codeSize = uint64(evm.StateDB.GetCodeSize(contract.Address()))
-	}
 	// Check if the remaining balance of the contract can cover the staking requirement
 	if !evm.StateDB.HasSuicided(contract.Address()) && codeSize > params.MaxCodeSizeSoft {
 		staking := big.NewInt(int64((codeSize - 1) / params.ExtcodeCopyChunkSize))
