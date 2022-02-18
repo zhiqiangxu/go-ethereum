@@ -47,7 +47,6 @@ func TestContractCheckStakingW3IP002(t *testing.T) {
 	emptyAcc := AccountRef(common.Address{})
 	calls := []string{"call", "callCode", "delegateCall"}
 	for _, callMethod := range calls {
-
 		for i, tt := range contractCheckStakingTests {
 			statedb, _ := state.New(common.Hash{}, state.NewDatabase(rawdb.NewMemoryDatabase()), nil)
 			statedb.CreateAccount(contract)
@@ -87,6 +86,7 @@ var createTests = []struct {
 	usedGas     uint64
 	failure     error
 }{
+	{byte(PUSH1), "0xff", 0, 51030, nil},                                     // no need to stake
 	{byte(PUSH2), "0x6000", 0, 4918662, nil},                                 // no need to stake
 	{byte(PUSH2), "0x6001", 0, math.MaxUint64, ErrCodeInsufficientStake},     // code size > soft limit, have to stake
 	{byte(PUSH2), "0x6001", int64(params.CodeStakingPerChunk), 4918668, nil}, // staked
