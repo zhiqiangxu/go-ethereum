@@ -8,18 +8,21 @@ import (
 )
 
 var (
-	errUnknownBlock      = errors.New("unknown block")
-	errInvalidCoinbase   = errors.New("invalid coinbase")
-	errInvalidNonce      = errors.New("invalid nonce")
-	errInvalidDigest     = errors.New("invalid digest")
-	errInvalidTime       = errors.New("invalid time")
-	errInvalidUncleHash  = errors.New("invalid uncleHash")
-	errInvalidDifficulty = errors.New("invalid difficulty")
-	errUnclesNotAllowed  = errors.New("uncles not allowed")
+	errUnknownBlock                    = errors.New("unknown block")
+	errInvalidNonce                    = errors.New("invalid nonce")
+	errInvalidDigest                   = errors.New("invalid digest")
+	errInvalidTime                     = errors.New("invalid time")
+	errInvalidUncleHash                = errors.New("invalid uncleHash")
+	errInvalidDifficulty               = errors.New("invalid difficulty")
+	errUnclesNotAllowed                = errors.New("uncles not allowed")
+	errInvalidGasLimitForEmptyBlock    = errors.New("invalid gas limit for empty block")
+	errInvalidTimeForEmptyBlock        = errors.New("invalid time for empty block")
+	errInvalidRootForEmptyBlock        = errors.New("invalid root for empty block")
+	errInvalidTxHashForEmptyBlock      = errors.New("invalid txhash for empty block")
+	errInvalidReceiptHashForEmptyBlock = errors.New("invalid receipt hash for empty block")
 )
 
 var (
-	defaultUncleHash  = types.CalcUncleHash(nil)
 	defaultDifficulty = big.NewInt(0)
 	deltaSeconds      = int64(5)
 	defaultNonce      = types.BlockNonce{}

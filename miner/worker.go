@@ -606,6 +606,14 @@ func (w *worker) taskLoop() {
 	}
 }
 
+func (w *worker) isPending(hash common.Hash) bool {
+	w.mu.RLock()
+	w.mu.RUnlock()
+
+	_, exists := w.pendingTasks[hash]
+	return exists
+}
+
 // resultLoop is a standalone goroutine to handle sealing result submitting
 // and flush relative data to the database.
 func (w *worker) resultLoop() {
@@ -903,13 +911,25 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 	return false
 }
 
-// commitNewWork generates several new sealing tasks based on the parent block.
-func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) {
+func (w *worker) PrepareEmptyHeader() *types.Header {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
-	tstart := time.Now()
 	parent := w.chain.CurrentBlock()
+	header := w.prepareHeaderLocked(parent, 0)
+	if header != nil {
+		// make empty header deterministic
+		header.Coinbase = common.Address{}
+		header.GasLimit = parent.GasLimit()
+		header.Root = parent.Root()
+		header.ReceiptHash = types.EmptyRootHash
+		header.TxHash = types.EmptyRootHash
+		header.UncleHash = types.EmptyUncleHash
+	}
+	return header
+}
+
+func (w *worker) prepareHeaderLocked(parent *types.Block, timestamp int64) *types.Header {
 
 	if parent.Time() >= uint64(timestamp) {
 		timestamp = int64(parent.Time() + 1)
@@ -934,13 +954,14 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	if w.isRunning() {
 		if w.coinbase == (common.Address{}) {
 			log.Error("Refusing to mine without etherbase")
-			return
+			return nil
 		}
 		header.Coinbase = w.coinbase
 	}
+
 	if err := w.engine.Prepare(w.chain, header); err != nil {
 		log.Error("Failed to prepare header for mining", "err", err)
-		return
+		return nil
 	}
 	// If we are care about TheDAO hard-fork check whether to override the extra-data or not
 	if daoBlock := w.chainConfig.DAOForkBlock; daoBlock != nil {
@@ -954,6 +975,21 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 				header.Extra = []byte{} // If miner opposes, don't let it use the reserved extra-data
 			}
 		}
+	}
+
+	return header
+}
+
+// commitNewWork generates several new sealing tasks based on the parent block.
+func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	tstart := time.Now()
+	parent := w.chain.CurrentBlock()
+	header := w.prepareHeaderLocked(parent, timestamp)
+	if header == nil {
+		return
 	}
 	// Could potentially happen if starting to mine in an odd state.
 	err := w.makeCurrent(parent, header)

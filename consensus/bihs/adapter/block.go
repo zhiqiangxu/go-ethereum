@@ -44,3 +44,11 @@ func (b *Block) Deserialize(source *common.ZeroCopySource) error {
 	}
 	return rlp.DecodeBytes(bytes, b)
 }
+
+func (b *Block) header() *types.Header {
+	return (*types.Block)(b).Header()
+}
+
+func (b *Block) withSeal(header *types.Header) *types.Block {
+	return (*types.Block)(b).WithSeal(header)
+}

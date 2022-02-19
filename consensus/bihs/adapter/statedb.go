@@ -5,26 +5,42 @@ import (
 
 	"github.com/ethereum/go-ethereum/consensus/bihs/gov"
 	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/trie"
+	"github.com/ontio/ontology/common"
 	"github.com/zhiqiangxu/bihs"
 )
 
 type StateDB struct {
 	sync.RWMutex
-	chain      *core.BlockChain
-	gov        *gov.Governance
-	heightSubs []bihs.HeightChangeSub
+	chain                  *core.BlockChain
+	gov                    *gov.Governance
+	prepareEmptyHeaderFunc func() *types.Header
+	saveBlockFunc          func(block *types.Block)
+	heightSubs             []bihs.HeightChangeSub
 }
 
-func NewStateDB(chain *core.BlockChain, gov *gov.Governance) *StateDB {
+func NewStateDB(chain *core.BlockChain, gov *gov.Governance, prepareEmptyHeaderFunc func() *types.Header, saveBlockFunc func(block *types.Block)) *StateDB {
 	db := &StateDB{
-		chain: chain,
-		gov:   gov,
+		chain:                  chain,
+		gov:                    gov,
+		prepareEmptyHeaderFunc: prepareEmptyHeaderFunc,
+		saveBlockFunc:          saveBlockFunc,
 	}
 
 	return db
 }
 
 func (db *StateDB) StoreBlock(blk bihs.Block, commitQC *bihs.QC) error {
+
+	sink := common.NewZeroCopySink(nil)
+	commitQC.Serialize(sink)
+
+	block := blk.(*Block)
+	header := block.header()
+	header.Extra = sink.Bytes()
+
+	db.saveBlockFunc(block.withSeal(header))
 	return nil
 }
 
@@ -33,7 +49,8 @@ func (db *StateDB) Validate(blk bihs.Block) error {
 }
 
 func (db *StateDB) EmptyBlock(height uint64) bihs.Block {
-	return nil
+	emptyHeader := db.prepareEmptyHeaderFunc()
+	return (*Block)(types.NewBlock(emptyHeader, nil, nil, nil, trie.NewStackTrie(nil)))
 }
 
 func (db *StateDB) Height() uint64 {

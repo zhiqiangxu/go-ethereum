@@ -19,6 +19,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/event"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/params"
@@ -40,6 +41,7 @@ type BiHS struct {
 
 	chainHeadCh  chan core.ChainHeadEvent
 	chainHeadSub event.Subscription
+	commitCh     chan *types.Block
 }
 
 func New(bihsConfig *params.BiHSConfig, nodeConfig *node.Config, db ethdb.Database) *BiHS {
@@ -52,10 +54,11 @@ func New(bihsConfig *params.BiHSConfig, nodeConfig *node.Config, db ethdb.Databa
 		signer:      signer,
 		db:          db,
 		chainHeadCh: make(chan core.ChainHeadEvent, 1),
+		commitCh:    make(chan *types.Block, 1),
 	}
 }
 
-func (bh *BiHS) Init(chain *ethcore.BlockChain, bc adapter.Broadcaster, consensusMsgCode int) {
+func (bh *BiHS) Init(chain *ethcore.BlockChain, bc adapter.Broadcaster, consensusMsgCode int, prepareEmptyHeaderFunc func() *types.Header, saveBlockFunc func(block *types.Block)) {
 
 	adapter.ConsensusMsgCode = uint64(consensusMsgCode)
 
@@ -72,7 +75,7 @@ func (bh *BiHS) Init(chain *ethcore.BlockChain, bc adapter.Broadcaster, consensu
 
 	governance := gov.New(chain)
 
-	store := adapter.NewStateDB(chain, governance)
+	store := adapter.NewStateDB(chain, governance, prepareEmptyHeaderFunc, saveBlockFunc)
 	p2p := adapter.NewP2P(bc, chain, governance)
 
 	core := bihs.New(store, p2p, conf)
@@ -150,14 +153,29 @@ func (bh *BiHS) verifyHeader(chain consensus.ChainHeaderReader, header *types.He
 	}
 
 	if header.Coinbase == (common.Address{}) {
-		return errInvalidCoinbase
+		// empty block
+		if header.GasLimit != parent.GasLimit {
+			return errInvalidGasLimitForEmptyBlock
+		}
+		if header.Time != parent.Time+1 {
+			return errInvalidTimeForEmptyBlock
+		}
+		if header.Root != parent.Root {
+			return errInvalidRootForEmptyBlock
+		}
+		if header.TxHash != types.EmptyRootHash {
+			return errInvalidTxHashForEmptyBlock
+		}
+		if header.ReceiptHash != types.EmptyRootHash {
+			return errInvalidReceiptHashForEmptyBlock
+		}
 	}
 
 	if header.Nonce.Uint64() != 0 {
 		return errInvalidNonce
 	}
 
-	if header.UncleHash != defaultUncleHash {
+	if header.UncleHash != types.EmptyUncleHash {
 		return errInvalidUncleHash
 	}
 
@@ -212,13 +230,13 @@ func (bh *BiHS) getParentHeader(chain consensus.ChainHeaderReader, header *types
 func (bh *BiHS) Finalize(chain consensus.ChainHeaderReader, header *types.Header, state *state.StateDB, txs []*types.Transaction,
 	uncles []*types.Header) {
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
-	header.UncleHash = defaultUncleHash
+	header.UncleHash = types.EmptyUncleHash
 }
 
 func (bh *BiHS) FinalizeAndAssemble(chain consensus.ChainHeaderReader, header *types.Header, state *state.StateDB, txs []*types.Transaction,
 	uncles []*types.Header, receipts []*types.Receipt) (*types.Block, error) {
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
-	header.UncleHash = defaultUncleHash
+	header.UncleHash = types.EmptyUncleHash
 
 	return types.NewBlock(header, txs, nil, receipts, trie.NewStackTrie(nil)), nil
 }
@@ -230,6 +248,19 @@ func (bh *BiHS) Seal(chain consensus.ChainHeaderReader, block *types.Block, resu
 
 	bh.core.Propose(context.Background(), (*adapter.Block)(block))
 
+	go func() {
+		for {
+			select {
+			case blk := <-bh.commitCh:
+				if blk != nil && blk.Hash() == block.Hash() {
+					results <- blk
+				}
+			case <-stop:
+				log.Trace("Stop seal, triggered by miner")
+			}
+		}
+	}()
+
 	return
 }
 
@@ -239,6 +270,13 @@ func (bh *BiHS) SealHash(header *types.Header) common.Hash {
 
 func (bh *BiHS) CalcDifficulty(chain consensus.ChainHeaderReader, time uint64, parent *types.Header) *big.Int {
 	return defaultDifficulty
+}
+
+func (bh *BiHS) OnBlockCommit(block *types.Block) {
+	select {
+	case bh.commitCh <- block:
+	default:
+	}
 }
 
 func (bh *BiHS) APIs(chain consensus.ChainHeaderReader) []rpc.API {
