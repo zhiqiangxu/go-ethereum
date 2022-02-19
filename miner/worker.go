@@ -920,6 +920,7 @@ func (w *worker) PrepareEmptyHeader() *types.Header {
 	if header != nil {
 		// make empty header deterministic
 		header.Coinbase = common.Address{}
+		header.Time = parent.Time() + 1
 		header.GasLimit = parent.GasLimit()
 		header.Root = parent.Root()
 		header.ReceiptHash = types.EmptyRootHash

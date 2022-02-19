@@ -71,6 +71,7 @@ func (bh *BiHS) Init(chain *ethcore.BlockChain, bc adapter.Broadcaster, consensu
 		DataDir:       dir,
 		ProposerID:    proposer[:],
 		EcSigner:      bh.signer,
+		Logger:        &adapter.Logger{},
 	}
 
 	governance := gov.New(chain)
@@ -242,6 +243,7 @@ func (bh *BiHS) FinalizeAndAssemble(chain consensus.ChainHeaderReader, header *t
 }
 
 func (bh *BiHS) Seal(chain consensus.ChainHeaderReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) (err error) {
+
 	bh.Do(func() {
 		bh.core.Start()
 	})

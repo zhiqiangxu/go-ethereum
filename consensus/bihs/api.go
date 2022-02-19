@@ -6,3 +6,7 @@ type API struct {
 	chain consensus.ChainHeaderReader
 	bihs  *BiHS
 }
+
+func (api *API) Version() string {
+	return "1.0"
+}
