@@ -325,7 +325,9 @@ func (w *worker) isRunning() bool {
 func (w *worker) close() {
 	atomic.StoreInt32(&w.running, 0)
 	close(w.exitCh)
+	log.Info("w.exitCh closed, waiting")
 	w.wg.Wait()
+	log.Info("w.close done")
 }
 
 // recalcRecommit recalculates the resubmitting interval upon feedback.
@@ -352,6 +354,9 @@ func recalcRecommit(minRecommit, prev time.Duration, target float64, inc bool) t
 
 // newWorkLoop is a standalone goroutine to submit new mining work upon received events.
 func (w *worker) newWorkLoop(recommit time.Duration) {
+	defer func() {
+		log.Info("newWorkLoop done")
+	}()
 	defer w.wg.Done()
 	var (
 		interrupt   *int32
@@ -450,6 +455,9 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 
 // mainLoop is a standalone goroutine to regenerate the sealing task based on the received event.
 func (w *worker) mainLoop() {
+	defer func() {
+		log.Info("mainLoop done")
+	}()
 	defer w.wg.Done()
 	defer w.txsSub.Unsubscribe()
 	defer w.chainHeadSub.Unsubscribe()
@@ -558,6 +566,9 @@ func (w *worker) mainLoop() {
 // taskLoop is a standalone goroutine to fetch sealing task from the generator and
 // push them to consensus engine.
 func (w *worker) taskLoop() {
+	defer func() {
+		log.Info("taskLoop done")
+	}()
 	defer w.wg.Done()
 	var (
 		stopCh chan struct{}
@@ -617,6 +628,9 @@ func (w *worker) isPending(hash common.Hash) bool {
 // resultLoop is a standalone goroutine to handle sealing result submitting
 // and flush relative data to the database.
 func (w *worker) resultLoop() {
+	defer func() {
+		log.Info("resultLoop done")
+	}()
 	defer w.wg.Done()
 	for {
 		select {
@@ -627,6 +641,7 @@ func (w *worker) resultLoop() {
 			}
 			// Short circuit when receiving duplicate result caused by resubmitting.
 			if w.chain.HasBlock(block.Hash(), block.NumberU64()) {
+				log.Warn("resultLoop HasBlock", "hash", block.Hash(), "number", block.NumberU64())
 				continue
 			}
 			var (
@@ -666,13 +681,15 @@ func (w *worker) resultLoop() {
 				}
 				logs = append(logs, receipt.Logs...)
 			}
+			log.Info("resultLoop before WriteBlockAndSetHead", "number", block.NumberU64(), "hash", block.Hash())
 			// Commit block and state to database.
 			_, err := w.chain.WriteBlockAndSetHead(block, receipts, logs, task.state, true)
+			log.Info("resultLoop after WriteBlockAndSetHead", "err", err)
 			if err != nil {
 				log.Error("Failed writing block to chain", "err", err)
 				continue
 			}
-			log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
+			log.Info("resultLoop Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "time", block.Time(), "hash", hash,
 				"elapsed", common.PrettyDuration(time.Since(task.createdAt)))
 
 			// Broadcast the block and announce chain insertion event
@@ -1091,6 +1108,8 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 			log.Info("Commit new mining work", "number", block.Number(), "sealhash", w.engine.SealHash(block.Header()),
 				"uncles", len(uncles), "txs", w.current.tcount,
 				"gas", block.GasUsed(), "fees", totalFees(block, receipts),
+				"now", time.Now().Unix(),
+				"time", block.Time(),
 				"elapsed", common.PrettyDuration(time.Since(start)))
 
 		case <-w.exitCh:

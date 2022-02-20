@@ -23,7 +23,7 @@ var (
 )
 
 var (
-	defaultDifficulty = big.NewInt(0)
+	defaultDifficulty = big.NewInt(1)
 	deltaSeconds      = int64(5)
 	defaultNonce      = types.BlockNonce{}
 )

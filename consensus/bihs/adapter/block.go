@@ -11,7 +11,7 @@ import (
 
 type Block types.Block
 
-func (b *Block) Default() bihs.Block {
+func DefaultBlock() bihs.Block {
 	return &Block{}
 }
 
@@ -30,19 +30,19 @@ func (b *Block) Empty() bool {
 
 func (b *Block) Serialize(sink *common.ZeroCopySink) {
 	// (*types.Block)(b).EncodeRLP()
-	bytes, err := rlp.EncodeToBytes(b)
+	bytes, err := rlp.EncodeToBytes((*types.Block)(b))
 	if err != nil {
 		panic(fmt.Sprintf("rlp.EncodeToBytes failed:%v", err))
 	}
-	sink.WriteBytes(bytes)
+	sink.WriteVarBytes(bytes)
 }
 
 func (b *Block) Deserialize(source *common.ZeroCopySource) error {
 	bytes, err := source.ReadVarBytes()
 	if err != nil {
-		return fmt.Errorf("source.ReadVarBytes failed:%v", err)
+		return fmt.Errorf("Block.Deserialize source.ReadVarBytes failed:%v", err)
 	}
-	return rlp.DecodeBytes(bytes, b)
+	return rlp.DecodeBytes(bytes, (*types.Block)(b))
 }
 
 func (b *Block) header() *types.Header {

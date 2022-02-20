@@ -25,6 +25,7 @@ import (
 	"github.com/ethereum/go-ethereum/consensus/bihs"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/p2p/enode"
@@ -201,7 +202,11 @@ func handleMessage(backend Backend, peer *Peer) error {
 	//}
 	if msg.Code == ConsensusMsg {
 		if engine, ok := backend.Chain().Engine().(*bihs.BiHS); ok {
-			return engine.HandleP2pMsg(msg)
+			err := engine.HandleP2pMsg(msg)
+			if err != nil {
+				log.Warn("HandleP2pMsg", "err", err)
+			}
+			return err
 		} else {
 			return fmt.Errorf("unknown msg for current engine")
 		}

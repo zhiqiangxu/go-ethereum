@@ -17,6 +17,7 @@ import (
 	ethcore "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
@@ -46,6 +47,7 @@ type BiHS struct {
 
 func New(bihsConfig *params.BiHSConfig, nodeConfig *node.Config, db ethdb.Database) *BiHS {
 	privateKey := nodeConfig.NodeKey()
+	log.Info("node", crypto.PubkeyToAddress(privateKey.PublicKey).Hex())
 	signer := adapter.NewSigner(privateKey)
 
 	return &BiHS{
@@ -67,16 +69,17 @@ func (bh *BiHS) Init(chain *ethcore.BlockChain, bc adapter.Broadcaster, consensu
 	bihsConfig := bh.bihsConfig
 
 	conf := bihs.Config{
-		BlockInterval: time.Duration(bihsConfig.Period) * time.Second,
-		DataDir:       dir,
-		ProposerID:    proposer[:],
-		EcSigner:      bh.signer,
-		Logger:        &adapter.Logger{},
+		BlockInterval:    time.Duration(bihsConfig.Period) * time.Second,
+		DataDir:          dir,
+		ProposerID:       proposer[:],
+		EcSigner:         bh.signer,
+		Logger:           &adapter.Logger{},
+		DefaultBlockFunc: adapter.DefaultBlock,
 	}
 
 	governance := gov.New(chain)
 
-	store := adapter.NewStateDB(chain, governance, prepareEmptyHeaderFunc, saveBlockFunc)
+	store := adapter.NewStateDB(chain, governance, prepareEmptyHeaderFunc, saveBlockFunc, bh.VerifyHeader)
 	p2p := adapter.NewP2P(bc, chain, governance)
 
 	core := bihs.New(store, p2p, conf)
@@ -150,6 +153,7 @@ func (bh *BiHS) verifyHeader(chain consensus.ChainHeaderReader, header *types.He
 	}
 
 	if header.Time > uint64(time.Now().Unix()+deltaSeconds) {
+		log.Info("bihs.verifyHeader", "header.Time", header.Time, "now", time.Now().Unix(), "deltaSeconds", deltaSeconds, "coinbase", header.Coinbase, "parent.Time", parent.Time)
 		return consensus.ErrFutureBlock
 	}
 
@@ -216,6 +220,10 @@ func (bh *BiHS) Prepare(chain consensus.ChainHeaderReader, header *types.Header)
 		header.Time = uint64(time.Now().Unix())
 	}
 
+	maxAllowedTime := uint64(time.Now().Unix() + deltaSeconds)
+	if header.Time >= maxAllowedTime {
+		time.Sleep(time.Second * time.Duration(header.Time-maxAllowedTime))
+	}
 	return nil
 }
 
@@ -256,9 +264,11 @@ func (bh *BiHS) Seal(chain consensus.ChainHeaderReader, block *types.Block, resu
 			case blk := <-bh.commitCh:
 				if blk != nil && blk.Hash() == block.Hash() {
 					results <- blk
+					return
 				}
 			case <-stop:
-				log.Trace("Stop seal, triggered by miner")
+				log.Trace("Stop seal, triggered by miner", "hash", block.Hash(), "number", block.Number())
+				return
 			}
 		}
 	}()

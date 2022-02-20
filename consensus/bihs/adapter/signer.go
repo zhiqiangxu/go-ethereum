@@ -6,6 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/zhiqiangxu/bihs"
 )
 
@@ -32,11 +33,13 @@ func (s *Signer) Sign(data []byte) (sig []byte) {
 	if err != nil {
 		panic(fmt.Sprintf("crypto.Sign failed:%v", err))
 	}
+
 	return
 }
 
 func (s *Signer) Verify(data []byte, sig []byte) (id bihs.ID, err error) {
-	pubkey, err := crypto.Ecrecover(data, sig)
+	hashData := crypto.Keccak256(data)
+	pubkey, err := crypto.Ecrecover(hashData, sig)
 	if err != nil {
 		return
 	}
@@ -56,6 +59,7 @@ func (s *Signer) TCombine(_ []byte, sigs [][]byte) []byte {
 }
 
 func (s *Signer) TVerify(data []byte, sigs []byte, ids []bihs.ID, quorum int32) bool {
+	log.Info("TVerify", "#sigs", len(sigs), "ids", ids, "quorum", quorum)
 	if len(sigs)%crypto.SignatureLength != 0 {
 		return false
 	}
@@ -64,6 +68,7 @@ func (s *Signer) TVerify(data []byte, sigs []byte, ids []bihs.ID, quorum int32) 
 	for _, id := range ids {
 		addr := common.BytesToAddress(id)
 		if addrMap[addr] {
+			log.Info("false for dup ids")
 			return false
 		}
 		addrMap[addr] = true
@@ -72,15 +77,19 @@ func (s *Signer) TVerify(data []byte, sigs []byte, ids []bihs.ID, quorum int32) 
 	for len(sigs) >= crypto.SignatureLength {
 		signer, err := s.Verify(data, sigs[0:crypto.SignatureLength])
 		if err != nil {
+			log.Info("false for verify error", "err", err)
 			return false
 		}
 		addr := common.BytesToAddress(signer)
 		if !addrMap[addr] {
+			log.Info("false for invalid signer", "addr", addr)
 			return false
 		}
 		delete(addrMap, addr)
 		sigCount++
+		sigs = sigs[crypto.SignatureLength:]
 	}
 
+	log.Info("TVerify", "sigCount", sigCount, "quorum", quorum)
 	return sigCount >= quorum
 }

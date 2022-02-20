@@ -1,8 +1,10 @@
 package adapter
 
 import (
+	"fmt"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/consensus/bihs/gov"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -17,14 +19,16 @@ type StateDB struct {
 	gov                    *gov.Governance
 	prepareEmptyHeaderFunc func() *types.Header
 	saveBlockFunc          func(block *types.Block)
+	verifyHeaderFunc       func(chain consensus.ChainHeaderReader, header *types.Header, seal bool) error
 	heightSubs             []bihs.HeightChangeSub
 }
 
-func NewStateDB(chain *core.BlockChain, gov *gov.Governance, prepareEmptyHeaderFunc func() *types.Header, saveBlockFunc func(block *types.Block)) *StateDB {
+func NewStateDB(chain *core.BlockChain, gov *gov.Governance, prepareEmptyHeaderFunc func() *types.Header, saveBlockFunc func(block *types.Block), verifyHeaderFunc func(chain consensus.ChainHeaderReader, header *types.Header, seal bool) error) *StateDB {
 	db := &StateDB{
 		chain:                  chain,
 		gov:                    gov,
 		prepareEmptyHeaderFunc: prepareEmptyHeaderFunc,
+		verifyHeaderFunc:       verifyHeaderFunc,
 		saveBlockFunc:          saveBlockFunc,
 	}
 
@@ -45,12 +49,18 @@ func (db *StateDB) StoreBlock(blk bihs.Block, commitQC *bihs.QC) error {
 }
 
 func (db *StateDB) Validate(blk bihs.Block) error {
-	return nil
+	return db.verifyHeaderFunc(db.chain, blk.(*Block).header(), true)
 }
 
-func (db *StateDB) EmptyBlock(height uint64) bihs.Block {
+func (db *StateDB) EmptyBlock(height uint64) (bihs.Block, error) {
 	emptyHeader := db.prepareEmptyHeaderFunc()
-	return (*Block)(types.NewBlock(emptyHeader, nil, nil, nil, trie.NewStackTrie(nil)))
+	if emptyHeader == nil {
+		return nil, fmt.Errorf("prepareEmptyHeaderFunc failed")
+	}
+	if emptyHeader.Number.Uint64() != height {
+		return nil, fmt.Errorf("emptyHeader wrong height, expect:%d got:%d", height, emptyHeader.Number.Uint64())
+	}
+	return (*Block)(types.NewBlock(emptyHeader, nil, nil, nil, trie.NewStackTrie(nil))), nil
 }
 
 func (db *StateDB) Height() uint64 {

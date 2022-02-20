@@ -241,12 +241,15 @@ func New(stack *node.Node, config *ethconfig.Config) (*Ethereum, error) {
 
 	if bihs, ok := eth.engine.(*bihs.BiHS); ok {
 		saveBlock := func(block *types.Block) {
+
 			if eth.miner.IsPending(block.Hash()) {
+				log.Info("saveBlock by bihs.OnBlockCommit", "number", block.NumberU64(), "hash", block.Hash())
 				bihs.OnBlockCommit(block)
 			} else {
+				log.Info("saveBlock by blockFetcher.Enqueue", "number", block.NumberU64(), "hash", block.Hash())
 				err := eth.handler.blockFetcher.Enqueue("bihs", block)
 				if err != nil {
-					log.Trace("Enqueue block failed:%v", err)
+					log.Info("Enqueue block failed:%v", err)
 				}
 			}
 		}
@@ -579,23 +582,35 @@ func (s *Ethereum) Start() error {
 // Ethereum protocol.
 func (s *Ethereum) Stop() error {
 	// Stop all the peer-related stuff first.
+
 	s.ethDialCandidates.Close()
+	log.Info("ethDialCandidates.Close done")
 	s.snapDialCandidates.Close()
+	log.Info("snapDialCandidates.Close done")
 	s.handler.Stop()
+	log.Info("handler.Stop done")
 
 	// Then stop everything else.
 	s.bloomIndexer.Close()
+	log.Info("bloomIndexer.Close done")
 	close(s.closeBloomHandler)
 	s.txPool.Stop()
+	log.Info("txPool.Stop done")
 	s.miner.Close()
+	log.Info("miner.Close done")
 	s.blockchain.Stop()
+	log.Info("blockchain.Stop done")
 	s.engine.Close()
+	log.Info("engine.Close done")
 
 	// Clean shutdown marker as the last thing before closing db
 	s.shutdownTracker.Stop()
+	log.Info("shutdownTracker.Stop done")
 
 	s.chainDb.Close()
+	log.Info("chainDb.Close done")
 	s.eventMux.Stop()
+	log.Info("eventMux.Stop done")
 
 	return nil
 }

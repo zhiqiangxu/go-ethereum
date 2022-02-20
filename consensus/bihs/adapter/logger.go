@@ -10,7 +10,7 @@ type Logger struct {
 }
 
 func (l *Logger) Info(a ...interface{}) {
-	log.Info("", a...)
+	log.Info("bihs", a...)
 }
 
 func (l *Logger) Infof(format string, a ...interface{}) {
@@ -18,7 +18,7 @@ func (l *Logger) Infof(format string, a ...interface{}) {
 }
 
 func (l *Logger) Debug(a ...interface{}) {
-	log.Debug("", a...)
+	log.Debug("bihs", a...)
 }
 
 func (l *Logger) Debugf(format string, a ...interface{}) {
@@ -26,7 +26,7 @@ func (l *Logger) Debugf(format string, a ...interface{}) {
 }
 
 func (l *Logger) Fatal(a ...interface{}) {
-	log.Crit("", a...)
+	log.Crit("bihs", a...)
 }
 
 func (l *Logger) Fatalf(format string, a ...interface{}) {
@@ -34,7 +34,7 @@ func (l *Logger) Fatalf(format string, a ...interface{}) {
 }
 
 func (l *Logger) Error(a ...interface{}) {
-	log.Warn("", a...)
+	log.Warn("bihs", a...)
 }
 
 func (l *Logger) Errorf(format string, a ...interface{}) {

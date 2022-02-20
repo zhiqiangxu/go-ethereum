@@ -256,7 +256,9 @@ func newHandler(config *handlerConfig) (*handler, error) {
 			}
 			return 0, nil
 		}
+		log.Info("before InsertChain", "#blocks", len(blocks))
 		n, err := h.chain.InsertChain(blocks)
+		log.Info("after InsertChain", "#blocks", len(blocks), "err", err)
 		if err == nil {
 			atomic.StoreUint32(&h.acceptTxs, 1) // Mark initial sync done on any fetcher import
 		}
@@ -658,10 +660,12 @@ func (h *handler) Unicast(target common.Address, msgcode uint64, data interface{
 		pubKey := p.Node().Pubkey()
 		addr := crypto.PubkeyToAddress(*pubKey)
 		if addr == target {
+			log.Info("Unicast", "count", 1)
 			go p.Send(msgcode, data)
 			return
 		}
 	}
+	log.Info("Unicast", "count", 0)
 }
 
 func (h *handler) Multicast(targets []common.Address, msgcode uint64, data interface{}) {
@@ -671,9 +675,12 @@ func (h *handler) Multicast(targets []common.Address, msgcode uint64, data inter
 		addr := crypto.PubkeyToAddress(*pubKey)
 		m[addr] = p
 	}
+	count := 0
 	for _, target := range targets {
 		if peer := m[target]; peer != nil {
+			count++
 			go peer.Send(msgcode, data)
 		}
 	}
+	log.Info("Multicast", "count", count)
 }

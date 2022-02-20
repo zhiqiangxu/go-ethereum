@@ -6,7 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/rlp"
+	ocommon "github.com/ontio/ontology/common"
 	"github.com/zhiqiangxu/bihs"
 )
 
@@ -29,24 +29,30 @@ func NewP2P(bc Broadcaster, chain *core.BlockChain, gov *gov.Governance) *P2P {
 }
 
 func (p *P2P) Broadcast(msg *bihs.Msg) {
-	payload, err := rlp.EncodeToBytes(msg)
-	if err != nil {
-		log.Warn("P2P.Broadcast rlp.EncodeToBytes failed", err)
-		return
-	}
+
+	sink := ocommon.NewZeroCopySink(nil)
+	msg.Serialize(sink)
+	payload := sink.Bytes()
 	validators := p.gov.ValidatorP2PAddrs(msg.Height)
+	log.Info("Broadcast", "#payload", len(payload), "type", msg.Type, "height", msg.Height, "view", msg.View, "msg hash", msg.Hash())
 	p.bc.Multicast(validators, ConsensusMsgCode, payload)
+
+	// {
+	// 	var decodeMsg bihs.Msg
+	// 	err := decodeMsg.Deserialize(ocommon.NewZeroCopySource(payload))
+	// 	if err != nil {
+	// 		panic(fmt.Sprintf("decodeMsg.Deserialize failed:%v", err))
+	// 	}
+	// }
 }
 
 var ConsensusMsgCode uint64
 
 func (p *P2P) Send(id bihs.ID, msg *bihs.Msg) {
 	target := p.gov.ValidatorP2PAddr(common.BytesToAddress(id))
-	payload, err := rlp.EncodeToBytes(msg)
-	if err != nil {
-		log.Warn("P2P.Send rlp.EncodeToBytes failed", err)
-		return
-	}
+	sink := ocommon.NewZeroCopySink(nil)
+	msg.Serialize(sink)
+	payload := sink.Bytes()
 	p.bc.Unicast(target, ConsensusMsgCode, payload)
 }
 
@@ -55,19 +61,24 @@ func (p *P2P) MsgCh() <-chan *bihs.Msg {
 }
 
 func (p *P2P) HandleP2pMsg(msg p2p.Msg) (err error) {
-	var data []byte
-	if err = msg.Decode(&data); err != nil {
+
+	var payload []byte
+	if err = msg.Decode(&payload); err != nil {
 		return
 	}
 
 	var bihsMsg bihs.Msg
-	if err = rlp.DecodeBytes(data, &bihsMsg); err != nil {
+	if err = bihsMsg.Deserialize(ocommon.NewZeroCopySource(payload)); err != nil {
+		log.Info("bihs.Msg", "#payload", len(payload), "type", bihsMsg.Type, "height", bihsMsg.Height, "view", bihsMsg.View, "qc", bihsMsg.Justify)
 		return
 	}
+
+	log.Info("HandleP2pMsg", "#payload", len(payload), "msg hash", bihsMsg.Hash())
 
 	select {
 	case p.ch <- &bihsMsg:
 	default:
+		log.Warn("p2p msg dropped because channel is ful")
 	}
 
 	// TODO help propagation?
