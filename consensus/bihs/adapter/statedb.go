@@ -37,8 +37,12 @@ func NewStateDB(chain *core.BlockChain, gov *gov.Governance, prepareEmptyHeaderF
 
 func (db *StateDB) StoreBlock(blk bihs.Block, commitQC *bihs.QC) error {
 
+	if commitQC.Type != bihs.MTPreCommit {
+		return fmt.Errorf("invalid type for commitQC")
+	}
+
 	sink := common.NewZeroCopySink(nil)
-	commitQC.Serialize(sink)
+	commitQC.SerializeForHeader(sink)
 
 	block := blk.(*Block)
 	header := block.header()
@@ -48,8 +52,17 @@ func (db *StateDB) StoreBlock(blk bihs.Block, commitQC *bihs.QC) error {
 	return nil
 }
 
-func (db *StateDB) Validate(blk bihs.Block) error {
-	return db.verifyHeaderFunc(db.chain, blk.(*Block).header(), true)
+func (db *StateDB) Validate(blk bihs.Block) (err error) {
+	block, ok := blk.(*Block)
+	if !ok {
+		err = fmt.Errorf("invalid block")
+		return
+	}
+	err = db.verifyHeaderFunc(db.chain, block.header(), false)
+	if err != nil {
+		return
+	}
+	return db.chain.PreExecuteBlock((*types.Block)(block))
 }
 
 func (db *StateDB) EmptyBlock(height uint64) (bihs.Block, error) {

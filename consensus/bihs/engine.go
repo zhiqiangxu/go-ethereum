@@ -26,6 +26,7 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/trie"
+	ocommon "github.com/ontio/ontology/common"
 	"github.com/zhiqiangxu/bihs"
 	"github.com/zhiqiangxu/util"
 )
@@ -38,6 +39,7 @@ type BiHS struct {
 	signer     *adapter.Signer
 	db         ethdb.Database
 	core       *bihs.HotStuff
+	gov        *gov.Governance
 	p2p        *adapter.P2P
 
 	chainHeadCh  chan core.ChainHeadEvent
@@ -84,6 +86,7 @@ func (bh *BiHS) Init(chain *ethcore.BlockChain, bc adapter.Broadcaster, consensu
 
 	core := bihs.New(store, p2p, conf)
 	bh.core = core
+	bh.gov = governance
 	bh.p2p = p2p
 
 	bh.chainHeadSub = chain.SubscribeChainHeadEvent(bh.chainHeadCh)
@@ -104,7 +107,7 @@ func (bh *BiHS) Author(header *types.Header) (common.Address, error) {
 }
 
 func (bh *BiHS) VerifyHeader(chain consensus.ChainHeaderReader, header *types.Header, seal bool) error {
-	return bh.verifyHeader(chain, header, nil)
+	return bh.verifyHeader(chain, header, nil, seal)
 }
 
 func (bh *BiHS) VerifyHeaders(chain consensus.ChainHeaderReader, headers []*types.Header, seals []bool) (chan<- struct{}, <-chan error) {
@@ -113,7 +116,7 @@ func (bh *BiHS) VerifyHeaders(chain consensus.ChainHeaderReader, headers []*type
 
 	go func() {
 		for i, header := range headers {
-			err := bh.verifyHeader(chain, header, headers[:i])
+			err := bh.verifyHeader(chain, header, headers[:i], seals[i])
 
 			select {
 			case <-abort:
@@ -132,7 +135,7 @@ func (bh *BiHS) VerifyUncles(chain consensus.ChainReader, block *types.Block) er
 	return nil
 }
 
-func (bh *BiHS) verifyHeader(chain consensus.ChainHeaderReader, header *types.Header, parents []*types.Header) error {
+func (bh *BiHS) verifyHeader(chain consensus.ChainHeaderReader, header *types.Header, parents []*types.Header, seal bool) error {
 	if header.Number == nil {
 		return errUnknownBlock
 	}
@@ -203,7 +206,23 @@ func (bh *BiHS) verifyHeader(chain consensus.ChainHeaderReader, header *types.He
 		return err
 	}
 
-	// All basic checks passed, verify signatures fields
+	if !seal {
+		if len(header.Extra) != 0 {
+			return fmt.Errorf("extra should be empty for non-seal header, #len %d", len(header.Extra))
+		}
+	} else {
+		var qc bihs.QC
+		hash := header.Hash()
+		err := qc.DeserializeFromHeader(header.Number.Uint64(), hash[:], ocommon.NewZeroCopySource(header.Extra))
+		if err != nil {
+			return err
+		}
+
+		ids := bh.gov.ValidatorIDs(header.Number.Uint64())
+		if !qc.VerifyEC(bh.signer, ids) {
+			return fmt.Errorf("qc.VerifyEC failed")
+		}
+	}
 	return nil
 }
 
@@ -211,6 +230,7 @@ func (bh *BiHS) Prepare(chain consensus.ChainHeaderReader, header *types.Header)
 	header.Coinbase = bh.signer.Address()
 	header.Nonce = defaultNonce
 	header.MixDigest = types.BiHSDigest
+	header.Extra = nil
 
 	parent, err := bh.getParentHeader(chain, header)
 	if err != nil {

@@ -981,6 +981,9 @@ func (w *worker) prepareHeaderLocked(parent *types.Block, timestamp int64) *type
 		log.Error("Failed to prepare header for mining", "err", err)
 		return nil
 	}
+	if header.Extra == nil {
+		return header
+	}
 	// If we are care about TheDAO hard-fork check whether to override the extra-data or not
 	if daoBlock := w.chainConfig.DAOForkBlock; daoBlock != nil {
 		// Check whether the block is among the fork extra-override range

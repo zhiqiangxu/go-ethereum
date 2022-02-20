@@ -2316,3 +2316,20 @@ func (bc *BlockChain) InsertHeaderChain(chain []*types.Header, checkFreq int) (i
 	_, err := bc.hc.InsertHeaderChain(chain, start, bc.forker)
 	return 0, err
 }
+
+func (bc *BlockChain) PreExecuteBlock(block *types.Block) error {
+	parent := bc.GetBlockByHash(block.ParentHash())
+	statedb, err := bc.StateAt(parent.Root())
+	if err != nil {
+		return err
+	}
+
+	receipts, _, usedGas, err := bc.processor.Process(block, statedb, bc.vmConfig)
+	if err != nil {
+		return err
+	}
+	if err := bc.validator.ValidateState(block, statedb, receipts, usedGas); err != nil {
+		return err
+	}
+	return nil
+}
