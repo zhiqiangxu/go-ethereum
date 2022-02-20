@@ -88,10 +88,13 @@ func (bh *BiHS) Init(chain *ethcore.BlockChain, bc adapter.Broadcaster, consensu
 
 	bh.chainHeadSub = chain.SubscribeChainHeadEvent(bh.chainHeadCh)
 	util.GoFunc(&bh.wg, func() {
-		select {
-		case <-bh.chainHeadCh:
-			store.HeightChanged()
-		case <-bh.chainHeadSub.Err():
+		for {
+			select {
+			case <-bh.chainHeadCh:
+				store.HeightChanged()
+			case <-bh.chainHeadSub.Err():
+				return
+			}
 		}
 	})
 }

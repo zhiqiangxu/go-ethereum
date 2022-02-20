@@ -15,6 +15,10 @@ func DefaultBlock() bihs.Block {
 	return &Block{}
 }
 
+func (b *Block) TimeMil() uint64 {
+	return (*types.Block)(b).Header().Time * 1000
+}
+
 func (b *Block) Height() uint64 {
 	return (*types.Block)(b).Header().Number.Uint64()
 }

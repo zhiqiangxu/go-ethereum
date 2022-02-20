@@ -1382,7 +1382,7 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (int, error) {
 func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals, setHead bool) (int, error) {
 	log.Info("insertChain called")
 	defer func() {
-		log.Info("insertChain done")
+		log.Info("insertChain done2")
 	}()
 	// If the chain is terminating, don't even bother starting up.
 	if bc.insertStopped() {
@@ -1400,7 +1400,9 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals, setHead bool)
 	// Fire a single chain head event if we've progressed the chain
 	defer func() {
 		if lastCanon != nil && bc.CurrentBlock().Hash() == lastCanon.Hash() {
+			log.Info("insertChain before fire ChainHeadEvent", "number", lastCanon.NumberU64(), "hash", lastCanon.Hash())
 			bc.chainHeadFeed.Send(ChainHeadEvent{lastCanon})
+			log.Info("insertChain after fire ChainHeadEvent", "number", lastCanon.NumberU64(), "hash", lastCanon.Hash())
 		}
 	}()
 	// Start the parallel header verifier
@@ -1517,7 +1519,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals, setHead bool)
 		}
 	}()
 
-	log.Info("insertChain for loop")
+	log.Info("insertChain for loop", "err", err)
 	for ; block != nil && err == nil || errors.Is(err, ErrKnownBlock); block, err = it.next() {
 		// If the chain is terminating, stop processing blocks
 		if bc.insertStopped() {
@@ -1716,6 +1718,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals, setHead bool)
 	}
 	stats.ignored += it.remaining()
 
+	log.Info("insertChain done1")
 	return it.index, err
 }
 
