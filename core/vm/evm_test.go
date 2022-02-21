@@ -43,14 +43,13 @@ var contractCheckStakingTests = []struct {
 }
 
 func TestContractCheckStakingW3IP002(t *testing.T) {
-	contract := common.BytesToAddress([]byte("contract"))
-	emptyAcc := AccountRef(common.Address{})
+	caddr := common.BytesToAddress([]byte("contract"))
 	calls := []string{"call", "callCode", "delegateCall"}
 	for _, callMethod := range calls {
 		for i, tt := range contractCheckStakingTests {
 			statedb, _ := state.New(common.Hash{}, state.NewDatabase(rawdb.NewMemoryDatabase()), nil)
-			statedb.CreateAccount(contract)
-			statedb.SetCode(contract, codegenWithSize(tt.codeSize))
+			statedb.CreateAccount(caddr)
+			statedb.SetCode(caddr, codegenWithSize(tt.codeSize))
 
 			vmctx := BlockContext{
 				BlockNumber: big.NewInt(0),
@@ -61,13 +60,14 @@ func TestContractCheckStakingW3IP002(t *testing.T) {
 			}
 			vmenv := NewEVM(vmctx, TxContext{}, statedb, params.AllEthashProtocolChanges, Config{})
 
+			caller := AccountRef(caddr)
 			var err error
 			if callMethod == "call" {
-				_, _, err = vmenv.Call(emptyAcc, contract, nil, math.MaxUint64, new(big.Int))
+				_, _, err = vmenv.Call(AccountRef(common.Address{}), caddr, nil, math.MaxUint64, new(big.Int))
 			} else if callMethod == "callCode" {
-				_, _, err = vmenv.CallCode(emptyAcc, contract, nil, math.MaxUint64, new(big.Int))
+				_, _, err = vmenv.CallCode(caller, caddr, nil, math.MaxUint64, new(big.Int))
 			} else if callMethod == "delegateCall" {
-				_, _, err = vmenv.DelegateCall(NewContract(emptyAcc, emptyAcc, big.NewInt(0), 0), contract, nil, math.MaxUint64)
+				_, _, err = vmenv.DelegateCall(NewContract(caller, caller, big.NewInt(0), 0), caddr, nil, math.MaxUint64)
 			} else {
 				panic("invalid call method")
 			}
