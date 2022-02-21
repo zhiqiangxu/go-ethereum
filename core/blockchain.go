@@ -2324,6 +2324,10 @@ func (bc *BlockChain) PreExecuteBlock(block *types.Block) error {
 		return err
 	}
 
+	txHash := types.DeriveSha(block.Transactions(), trie.NewStackTrie(nil))
+	if block.TxHash() != txHash {
+		return fmt.Errorf("invalid txHash")
+	}
 	receipts, _, usedGas, err := bc.processor.Process(block, statedb, bc.vmConfig)
 	if err != nil {
 		return err
