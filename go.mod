@@ -1,4 +1,4 @@
-module github.com/QuarkChain/go-ethereum
+module github.com/ethereum/go-ethereum
 
 go 1.15
 

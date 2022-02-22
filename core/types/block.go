@@ -87,9 +87,10 @@ type Header struct {
 	BaseFee *big.Int `json:"baseFeePerGas" rlp:"optional"`
 
 	// Tendermint-related data structure
-	Commit         []byte        `json:"Commit" rlp:"optional"`
+	TimeMs         uint64        `json:"TimeMs" rlp:"optional"`
 	NextValidators []common.Hash `json:"NextValidators" rlp:"optional"`
 	LastCommitHash common.Hash   `json:"LastCommitHash" rlp:"optional"`
+	Commit         []byte        `json:"Commit" rlp:"optional"`
 
 	/*
 		TODO (MariusVanDerWijden) Add this field once needed
