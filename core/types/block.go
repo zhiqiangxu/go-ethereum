@@ -28,6 +28,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/types/chamber"
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
@@ -172,6 +173,7 @@ type Block struct {
 	header       *Header
 	uncles       []*Header
 	transactions Transactions
+	LastCommmit  *chamber.Commit
 
 	// caches
 	hash atomic.Value
