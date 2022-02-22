@@ -85,7 +85,11 @@ type Header struct {
 
 	// BaseFee was added by EIP-1559 and is ignored in legacy headers.
 	BaseFee *big.Int `json:"baseFeePerGas" rlp:"optional"`
-	Comit   []byte   `json:"Commit" rlp:"optional"`
+
+	// Tendermint-related data structure
+	Commit         []byte        `json:"Commit" rlp:"optional"`
+	NextValidators []common.Hash `json:"NextValidators" rlp:"optional"`
+	LastCommitHash common.Hash   `json:"LastCommitHash" rlp:"optional"`
 
 	/*
 		TODO (MariusVanDerWijden) Add this field once needed
