@@ -173,7 +173,7 @@ type Block struct {
 	header       *Header
 	uncles       []*Header
 	transactions Transactions
-	LastCommmit  *chamber.Commit
+	LastCommit   *chamber.Commit
 
 	// caches
 	hash atomic.Value
@@ -315,6 +315,17 @@ func (b *Block) ReceiptHash() common.Hash { return b.header.ReceiptHash }
 func (b *Block) UncleHash() common.Hash   { return b.header.UncleHash }
 func (b *Block) Extra() []byte            { return common.CopyBytes(b.header.Extra) }
 
+func (b *Block) HashTo(hash common.Hash) bool {
+	if b == nil {
+		return false
+	}
+	return b.Hash() == hash
+}
+
+func (b *Block) FillHeaderLastCommitHash() {
+	b.header.LastCommitHash = b.LastCommit.Hash()
+}
+
 func (b *Block) BaseFee() *big.Int {
 	if b.header.BaseFee == nil {
 		return nil
@@ -390,6 +401,9 @@ func (b *Block) WithBody(transactions []*Transaction, uncles []*Header) *Block {
 func (b *Block) Hash() common.Hash {
 	if hash := b.hash.Load(); hash != nil {
 		return hash.(common.Hash)
+	}
+	if (b.header.LastCommitHash == common.Hash{}) {
+		b.FillHeaderLastCommitHash()
 	}
 	v := b.header.Hash()
 	b.hash.Store(v)
