@@ -112,9 +112,11 @@ type headerMarshaling struct {
 }
 
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
-// RLP encoding.
+// RLP encoding without Commit field.
 func (h *Header) Hash() common.Hash {
-	return rlpHash(h)
+	cph := CopyHeader(h)
+	cph.Commit = nil
+	return rlpHash(cph)
 }
 
 var headerSize = common.StorageSize(reflect.TypeOf(Header{}).Size())
@@ -256,6 +258,10 @@ func CopyHeader(h *Header) *Header {
 	if len(h.Extra) > 0 {
 		cpy.Extra = make([]byte, len(h.Extra))
 		copy(cpy.Extra, h.Extra)
+	}
+	if len(h.NextValidators) > 0 {
+		cpy.NextValidators = make([]common.Address, len(h.NextValidators))
+		copy(cpy.NextValidators, h.NextValidators)
 	}
 	return &cpy
 }
