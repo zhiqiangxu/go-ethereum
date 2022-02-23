@@ -1,4 +1,4 @@
-package chamber
+package types
 
 import (
 	"context"

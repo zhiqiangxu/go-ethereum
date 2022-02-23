@@ -1,10 +1,9 @@
-package chamber
+package types
 
 import (
 	"io"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
@@ -14,7 +13,7 @@ import (
 // verifying a block does not need LastCommit anymore.
 // That means a non-validator node does not need LastCommit to sync and fully verify the chain.
 type FullBlock struct {
-	types.Block
+	Block
 	LastCommit *Commit
 }
 

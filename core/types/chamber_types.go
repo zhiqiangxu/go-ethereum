@@ -1,4 +1,4 @@
-package chamber
+package types
 
 import (
 	"errors"
@@ -31,35 +31,6 @@ func IsVoteTypeValid(t SignedMsgType) bool {
 	default:
 		return false
 	}
-}
-
-type Header struct {
-	LastBlockID     common.Hash
-	Height          uint64
-	TimeMs          uint64
-	ProposerAddress common.Address
-	NextValidators  []common.Address
-	LastCommitHash  common.Hash
-}
-
-type Block struct {
-	Header
-	Data       []byte
-	LastCommit *Commit
-}
-
-func (b *Block) fillHeader() {
-	b.LastCommitHash = b.LastCommit.Hash()
-}
-
-func (b *Block) Hash() common.Hash {
-	b.fillHeader()
-
-	data, err := rlp.EncodeToBytes(b.Header)
-	if err != nil {
-		panic("fail to rlp Commit")
-	}
-	return crypto.Keccak256Hash(data)
 }
 
 func (b *Block) HashTo(hash common.Hash) bool {
