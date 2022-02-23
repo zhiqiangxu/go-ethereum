@@ -126,7 +126,7 @@ func (p *Proposal) ValidateBasic() error {
 }
 
 // block will be append to end of stream
-type ProposalRaw struct {
+type proposalRaw struct {
 	Height    uint64
 	Round     uint32
 	POLRound  uint32
@@ -136,7 +136,7 @@ type ProposalRaw struct {
 }
 
 func (p *Proposal) EncodeRLP(w io.Writer) error {
-	if err := rlp.Encode(w, ProposalRaw{
+	if err := rlp.Encode(w, proposalRaw{
 		Height:    uint64(p.Height),
 		Round:     uint32(p.Round),
 		POLRound:  uint32(p.POLRound),
@@ -151,7 +151,7 @@ func (p *Proposal) EncodeRLP(w io.Writer) error {
 }
 
 func (p *Proposal) DecodeRLP(s *rlp.Stream) error {
-	var pr ProposalRaw
+	var pr proposalRaw
 	if err := s.Decode(&pr); err != nil {
 		return err
 	}

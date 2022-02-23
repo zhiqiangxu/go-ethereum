@@ -3,6 +3,7 @@ package types
 import (
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -150,6 +151,48 @@ func (vote *Vote) ValidateBasic() error {
 	if len(vote.Signature) > MaxSignatureSize {
 		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
+
+	return nil
+}
+
+type voteRaw struct {
+	Type             uint32
+	Height           uint64
+	Round            uint32
+	BlockID          common.Hash
+	Timestamp        uint64
+	ValidatorAddress common.Address
+	ValidatorIndex   uint32
+	Signature        []byte
+}
+
+func (v *Vote) EncodeRLP(w io.Writer) error {
+	return rlp.Encode(w, &voteRaw{
+		Type:             uint32(v.Type),
+		Height:           uint64(v.Height),
+		Round:            uint32(v.Round),
+		BlockID:          v.BlockID,
+		Timestamp:        uint64(v.TimestampMs),
+		ValidatorAddress: v.ValidatorAddress,
+		ValidatorIndex:   uint32(v.ValidatorIndex),
+		Signature:        v.Signature,
+	})
+}
+
+func (v *Vote) DecodeRLP(s *rlp.Stream) error {
+	var vr voteRaw
+	if err := s.Decode(&vr); err != nil {
+		return err
+	}
+
+	v.Type = SignedMsgType(vr.Type)
+	v.Height = vr.Height
+	v.Round = int32(vr.Round)
+	v.BlockID = vr.BlockID
+	v.TimestampMs = vr.Timestamp
+	v.ValidatorAddress = vr.ValidatorAddress
+	v.ValidatorIndex = int32(vr.ValidatorIndex)
+	v.Signature = vr.Signature
 
 	return nil
 }
