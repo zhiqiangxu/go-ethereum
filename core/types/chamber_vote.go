@@ -36,7 +36,7 @@ func (m *VoteMessage) String() string {
 	return fmt.Sprintf("[Vote %v]", m.Vote)
 }
 
-type VoteForSign struct {
+type voteForSign struct {
 	Type        SignedMsgType
 	Height      uint64
 	Round       uint32
@@ -47,7 +47,7 @@ type VoteForSign struct {
 
 // asusme it passes validate basic()
 func (vote *Vote) VoteSignBytes(chainID string) []byte {
-	vs := VoteForSign{
+	vs := voteForSign{
 		Type:        vote.Type,
 		Height:      vote.Height,
 		Round:       SafeConvertUint32FromInt32(vote.Round),

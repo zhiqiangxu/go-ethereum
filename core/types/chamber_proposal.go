@@ -33,29 +33,27 @@ func Canonical(t time.Time) time.Time {
 // a so-called Proof-of-Lock (POL) round, as noted in the POLRound.
 // If POLRound >= 0, then BlockID corresponds to the block that is locked in POLRound.
 type Proposal struct {
-	Height      uint64      `json:"height"`
-	Round       int32       `json:"round"`     // there can not be greater than 2_147_483_647 rounds
-	POLRound    int32       `json:"pol_round"` // -1 if null.
-	BlockID     common.Hash `json:"block_id"`
-	TimestampMs int64       `json:"timestamp"` // unix ms
-	Signature   []byte      `json:"signature"`
+	Height      uint64 `json:"height"`
+	Round       int32  `json:"round"`     // there can not be greater than 2_147_483_647 rounds
+	POLRound    int32  `json:"pol_round"` // -1 if null.
+	TimestampMs int64  `json:"timestamp"` // unix ms
+	Signature   []byte `json:"signature"`
 	Block       *FullBlock
 }
 
 // NewProposal returns a new Proposal.
 // If there is no POLRound, polRound should be -1.
-func NewProposal(height uint64, round int32, polRound int32, blockID common.Hash, block *FullBlock) *Proposal {
+func NewProposal(height uint64, round int32, polRound int32, block *FullBlock) *Proposal {
 	return &Proposal{
 		Height:      height,
 		Round:       round,
 		POLRound:    polRound,
-		BlockID:     blockID,
 		TimestampMs: CanonicalNowMs(),
 		Block:       block,
 	}
 }
 
-type ProposalForSign struct {
+type proposalForSign struct {
 	Height      uint64
 	Round       uint32
 	POLRound    uint32
@@ -65,11 +63,11 @@ type ProposalForSign struct {
 }
 
 func (p *Proposal) ProposalSignBytes(chainID string) []byte {
-	ps := ProposalForSign{
+	ps := proposalForSign{
 		Height:      p.Height,
 		Round:       uint32(p.Round),
 		POLRound:    uint32(p.POLRound),
-		BlockID:     p.BlockID,
+		BlockID:     p.Block.Hash(),
 		TimestampMs: uint64(p.TimestampMs),
 		ChainID:     chainID,
 	}
@@ -142,7 +140,7 @@ func (p *Proposal) EncodeRLP(w io.Writer) error {
 		Height:    uint64(p.Height),
 		Round:     uint32(p.Round),
 		POLRound:  uint32(p.POLRound),
-		BlockID:   p.BlockID,
+		BlockID:   p.Block.Hash(),
 		Timestamp: uint64(p.TimestampMs),
 		Signature: p.Signature,
 	}); err != nil {
@@ -161,7 +159,6 @@ func (p *Proposal) DecodeRLP(s *rlp.Stream) error {
 	p.Height = pr.Height
 	p.Round = int32(pr.Round)
 	p.POLRound = int32(pr.POLRound)
-	p.BlockID = pr.BlockID
 	p.TimestampMs = int64(pr.Timestamp)
 	p.Signature = pr.Signature
 
