@@ -28,7 +28,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core/types/chamber"
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
@@ -88,10 +87,10 @@ type Header struct {
 	BaseFee *big.Int `json:"baseFeePerGas" rlp:"optional"`
 
 	// Tendermint-related data structure
-	TimeMs         uint64        `json:"TimeMs" rlp:"optional"`
-	NextValidators []common.Hash `json:"NextValidators" rlp:"optional"`
-	LastCommitHash common.Hash   `json:"LastCommitHash" rlp:"optional"`
-	Commit         []byte        `json:"Commit" rlp:"optional"`
+	TimeMs         uint64           `json:"TimeMs" rlp:"optional"`
+	NextValidators []common.Address `json:"NextValidators" rlp:"optional"`
+	LastCommitHash common.Hash      `json:"LastCommitHash" rlp:"optional"`
+	Commit         []byte           `json:"Commit" rlp:"optional"`
 
 	/*
 		TODO (MariusVanDerWijden) Add this field once needed
@@ -173,7 +172,6 @@ type Block struct {
 	header       *Header
 	uncles       []*Header
 	transactions Transactions
-	LastCommit   *chamber.Commit
 
 	// caches
 	hash atomic.Value
@@ -297,11 +295,14 @@ func (b *Block) Transaction(hash common.Hash) *Transaction {
 	return nil
 }
 
+func (b *Block) NextValidators() []common.Address { return b.header.NextValidators }
+
 func (b *Block) Number() *big.Int     { return new(big.Int).Set(b.header.Number) }
 func (b *Block) GasLimit() uint64     { return b.header.GasLimit }
 func (b *Block) GasUsed() uint64      { return b.header.GasUsed }
 func (b *Block) Difficulty() *big.Int { return new(big.Int).Set(b.header.Difficulty) }
 func (b *Block) Time() uint64         { return b.header.Time }
+func (b *Block) TimeMs() uint64       { return b.header.TimeMs }
 
 func (b *Block) NumberU64() uint64        { return b.header.Number.Uint64() }
 func (b *Block) MixDigest() common.Hash   { return b.header.MixDigest }
@@ -314,17 +315,6 @@ func (b *Block) TxHash() common.Hash      { return b.header.TxHash }
 func (b *Block) ReceiptHash() common.Hash { return b.header.ReceiptHash }
 func (b *Block) UncleHash() common.Hash   { return b.header.UncleHash }
 func (b *Block) Extra() []byte            { return common.CopyBytes(b.header.Extra) }
-
-func (b *Block) HashTo(hash common.Hash) bool {
-	if b == nil {
-		return false
-	}
-	return b.Hash() == hash
-}
-
-func (b *Block) FillHeaderLastCommitHash() {
-	b.header.LastCommitHash = b.LastCommit.Hash()
-}
 
 func (b *Block) BaseFee() *big.Int {
 	if b.header.BaseFee == nil {
@@ -401,9 +391,6 @@ func (b *Block) WithBody(transactions []*Transaction, uncles []*Header) *Block {
 func (b *Block) Hash() common.Hash {
 	if hash := b.hash.Load(); hash != nil {
 		return hash.(common.Hash)
-	}
-	if (b.header.LastCommitHash == common.Hash{}) {
-		b.FillHeaderLastCommitHash()
 	}
 	v := b.header.Hash()
 	b.hash.Store(v)
