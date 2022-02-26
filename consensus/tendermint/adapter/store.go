@@ -81,7 +81,8 @@ func (s *Store) ValidateBlock(state pbft.ChainState, block *types.FullBlock) (er
 	return
 }
 
-func (s *Store) ApplyBlock(context.Context, pbft.ChainState, *types.FullBlock) (state pbft.ChainState, err error) {
+func (s *Store) ApplyBlock(ctx context.Context, old pbft.ChainState, block *types.FullBlock) (new pbft.ChainState, err error) {
+	new = old
 	return
 }
 
