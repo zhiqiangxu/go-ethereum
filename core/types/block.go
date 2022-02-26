@@ -302,6 +302,7 @@ func (b *Block) Transaction(hash common.Hash) *Transaction {
 }
 
 func (b *Block) NextValidators() []common.Address { return b.header.NextValidators }
+func (b *Block) Commit() *Commit                  { return b.header.Commit }
 
 func (b *Block) Number() *big.Int     { return new(big.Int).Set(b.header.Number) }
 func (b *Block) GasLimit() uint64     { return b.header.GasLimit }
@@ -370,6 +371,18 @@ func CalcUncleHash(uncles []*Header) common.Hash {
 // the sealed one.
 func (b *Block) WithSeal(header *Header) *Block {
 	cpy := *header
+
+	return &Block{
+		header:       &cpy,
+		transactions: b.transactions,
+		uncles:       b.uncles,
+	}
+}
+
+func (b *Block) WithCommit(commit *Commit) *Block {
+	cpy := *b.header
+
+	cpy.Commit = commit
 
 	return &Block{
 		header:       &cpy,

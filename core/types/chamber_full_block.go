@@ -14,7 +14,7 @@ import (
 // verifying a block does not need LastCommit anymore.
 // That means a non-validator node does not need LastCommit to sync and fully verify the chain.
 type FullBlock struct {
-	Block
+	*Block
 	LastCommit *Commit
 }
 
@@ -53,4 +53,18 @@ func (b *FullBlock) DecodeRLP(s *rlp.Stream) error {
 func (b *FullBlock) DecodeFromRLPBytes(bs []byte) error {
 	s := rlp.NewStream(bytes.NewReader(bs), 0)
 	return b.DecodeRLP(s)
+}
+
+func (b *FullBlock) WithCommit(commit *Commit) *FullBlock {
+	cpy := *b.header
+
+	cpy.Commit = commit
+
+	return &FullBlock{
+		Block: &Block{
+			header:       &cpy,
+			transactions: b.transactions,
+			uncles:       b.uncles,
+		},
+		LastCommit: b.LastCommit}
 }
