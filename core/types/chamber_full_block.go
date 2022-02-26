@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"io"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -32,6 +33,14 @@ func (b *FullBlock) EncodeRLP(w io.Writer) error {
 	return rlp.Encode(w, b.LastCommit)
 }
 
+func (b *FullBlock) EncodeToRLPBytes() ([]byte, error) {
+	var buf bytes.Buffer
+	if err := b.EncodeRLP(&buf); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
 func (b *FullBlock) DecodeRLP(s *rlp.Stream) error {
 	err := b.Block.DecodeRLP(s)
 	if err != nil {
@@ -39,4 +48,9 @@ func (b *FullBlock) DecodeRLP(s *rlp.Stream) error {
 	}
 	b.LastCommit = &Commit{}
 	return s.Decode(&b.LastCommit)
+}
+
+func (b *FullBlock) DecodeFromRLPBytes(bs []byte) error {
+	s := rlp.NewStream(bytes.NewReader(bs), 0)
+	return b.DecodeRLP(s)
 }
