@@ -89,7 +89,6 @@ type environment struct {
 	tcount    int            // tx count in cycle
 	gasPool   *core.GasPool  // available gas used to pack transactions
 
-	parent   *types.Block
 	header   *types.Header
 	txs      []*types.Transaction
 	receipts []*types.Receipt
@@ -101,6 +100,7 @@ type task struct {
 	state     *state.StateDB
 	block     *types.Block
 	createdAt time.Time
+	resultCh  chan *types.Block
 }
 
 const (
@@ -114,7 +114,7 @@ type newWorkReq struct {
 	interrupt *int32
 	noempty   bool
 	timestamp int64
-	resultCh  chan *types.FullBlock
+	resultCh  chan *types.Block
 }
 
 // intervalAdjust represents a resubmitting interval adjustment.
@@ -141,7 +141,7 @@ type worker struct {
 	txsCh        chan core.NewTxsEvent
 	txsSub       event.Subscription
 	chainHeadCh  chan core.ChainHeadEvent
-	makeBlockCh  chan chan *types.FullBlock
+	makeBlockCh  chan chan *types.Block
 	chainHeadSub event.Subscription
 	chainSideCh  chan core.ChainSideEvent
 	chainSideSub event.Subscription
@@ -212,7 +212,7 @@ func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus
 		txsCh:              make(chan core.NewTxsEvent, txChanSize),
 		chainHeadCh:        make(chan core.ChainHeadEvent, chainHeadChanSize),
 		chainSideCh:        make(chan core.ChainSideEvent, chainSideChanSize),
-		makeBlockCh:        make(chan chan *types.FullBlock),
+		makeBlockCh:        make(chan chan *types.Block),
 		newWorkCh:          make(chan *newWorkReq),
 		taskCh:             make(chan *task),
 		resultCh:           make(chan *types.Block, resultQueueSize),
@@ -355,17 +355,12 @@ func recalcRecommit(minRecommit, prev time.Duration, target float64, inc bool) t
 	return time.Duration(int64(next))
 }
 
-func (w *worker) makeBlock() (block *types.FullBlock) {
-	resultCh := make(chan *types.FullBlock, 1)
+func (w *worker) makeBlock(resultCh chan *types.Block) {
+
 	select {
 	case w.makeBlockCh <- resultCh:
-		select {
-		case block = <-resultCh:
-		case <-w.exitCh:
-			return nil
-		}
 	case <-w.exitCh:
-		return nil
+		return
 	}
 
 	return
@@ -386,7 +381,7 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 
 	tm, isTm := w.engine.(*tendermint.Tendermint)
 	// commit aborts in-flight transaction execution with given signal and resubmits a new one.
-	commit := func(noempty bool, s int32, resultCh chan *types.FullBlock) {
+	commit := func(noempty bool, s int32, resultCh chan *types.Block) {
 		if interrupt != nil {
 			atomic.StoreInt32(interrupt, s)
 		}
@@ -419,6 +414,7 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 
 			commit(true, commitInterruptNewHead, resultCh)
 		case <-w.startCh:
+			clearPending(w.chain.CurrentBlock().NumberU64())
 			if isTm {
 				err := tm.Init(w.chain, w.makeBlock)
 				if err != nil {
@@ -426,15 +422,16 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 				}
 				continue
 			}
-			clearPending(w.chain.CurrentBlock().NumberU64())
+
 			timestamp = time.Now().Unix()
 			commit(false, commitInterruptNewHead, nil)
 
 		case head := <-w.chainHeadCh:
+
+			clearPending(head.Block.NumberU64())
 			if isTm {
 				continue
 			}
-			clearPending(head.Block.NumberU64())
 			timestamp = time.Now().Unix()
 			commit(false, commitInterruptNewHead, nil)
 
@@ -640,7 +637,11 @@ func (w *worker) taskLoop() {
 			w.pendingTasks[sealHash] = task
 			w.pendingMu.Unlock()
 
-			if err := w.engine.Seal(w.chain, task.block, w.resultCh, stopCh); err != nil {
+			resultCh := w.resultCh
+			if task.resultCh != nil {
+				resultCh = task.resultCh
+			}
+			if err := w.engine.Seal(w.chain, task.block, resultCh, stopCh); err != nil {
 				log.Warn("Block sealing failed", "err", err)
 				w.pendingMu.Lock()
 				delete(w.pendingTasks, sealHash)
@@ -742,7 +743,6 @@ func (w *worker) makeCurrent(parent *types.Block, header *types.Header) error {
 		ancestors: mapset.NewSet(),
 		family:    mapset.NewSet(),
 		uncles:    mapset.NewSet(),
-		parent:    parent,
 		header:    header,
 	}
 	// when 08 is processed ancestors contain 07 (quick block)
@@ -952,7 +952,7 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 }
 
 // commitNewWork generates several new sealing tasks based on the parent block.
-func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64, resultCh chan *types.FullBlock) {
+func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64, resultCh chan *types.Block) {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
@@ -1079,7 +1079,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64, 
 
 // commit runs any post-transaction state modifications, assembles the final block
 // and commits new work if consensus engine is running.
-func (w *worker) commit(uncles []*types.Header, interval func(), update bool, start time.Time, resultCh chan *types.FullBlock) error {
+func (w *worker) commit(uncles []*types.Header, interval func(), update bool, start time.Time, resultCh chan *types.Block) error {
 	// Deep copy receipts here to avoid interaction between different tasks.
 	receipts := copyReceipts(w.current.receipts)
 	s := w.current.state.Copy()
@@ -1097,15 +1097,8 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 			return nil
 		}
 
-		if resultCh != nil {
-			select {
-			case resultCh <- &types.FullBlock{Block: block, LastCommit: w.current.parent.Header().Commit}:
-			case <-w.exitCh:
-				log.Info("Worker has exited")
-			}
-		}
 		select {
-		case w.taskCh <- &task{receipts: receipts, state: s, block: block, createdAt: time.Now()}:
+		case w.taskCh <- &task{receipts: receipts, state: s, block: block, createdAt: time.Now(), resultCh: resultCh}:
 			w.unconfirmed.Shift(block.NumberU64() - 1)
 			log.Info("Commit new mining work", "number", block.Number(), "sealhash", w.engine.SealHash(block.Header()),
 				"uncles", len(uncles), "txs", w.current.tcount,
