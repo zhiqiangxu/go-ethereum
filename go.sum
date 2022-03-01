@@ -551,6 +551,10 @@ github.com/zhiqiangxu/bihs v0.0.0-20220220105359-0df6181f96c6 h1:DJx8j55Kq5VW3Ih
 github.com/zhiqiangxu/bihs v0.0.0-20220220105359-0df6181f96c6/go.mod h1:pQJtnkZtU04PYOihQ5/v2BzNCkTklfFqtHHmFMJqG3g=
 github.com/zhiqiangxu/bihs v0.0.0-20220221134001-758994ca5ed8 h1:yTkG6ENJI92z4oFWhTVhbahsmqwlF0TQfejjM3d7Q0U=
 github.com/zhiqiangxu/bihs v0.0.0-20220221134001-758994ca5ed8/go.mod h1:pQJtnkZtU04PYOihQ5/v2BzNCkTklfFqtHHmFMJqG3g=
+github.com/zhiqiangxu/bihs v0.0.0-20220301145624-bfc4e2c694f5 h1:A2s6sAgHa03l9ab+39vZK8hVvW9h6SpStkfbCahg6TY=
+github.com/zhiqiangxu/bihs v0.0.0-20220301145624-bfc4e2c694f5/go.mod h1:pQJtnkZtU04PYOihQ5/v2BzNCkTklfFqtHHmFMJqG3g=
+github.com/zhiqiangxu/bihs v0.0.0-20220302150909-eed19d2d481e h1:Goyz4WsesrWL/otKX2qb937XcZ/ojKDosfSL9aJikqw=
+github.com/zhiqiangxu/bihs v0.0.0-20220302150909-eed19d2d481e/go.mod h1:pQJtnkZtU04PYOihQ5/v2BzNCkTklfFqtHHmFMJqG3g=
 github.com/zhiqiangxu/rpheap v0.0.0-20191222053847-9002d7e5a1a1 h1:9i/8yn4zcZL85rmOMp9AskgJJhb2HzducF1EahdxEME=
 github.com/zhiqiangxu/rpheap v0.0.0-20191222053847-9002d7e5a1a1/go.mod h1:aYy7SAJP4LY667NfqoMR/ZJAy8HQ8KVtQTvEDrGS5ks=
 github.com/zhiqiangxu/util v0.0.0-20210608123940-8b5a9fec779f h1:Qj4r6VNJRHJOy50ixhmPerKf0r/qM+SSpuuIY5J/hiM=

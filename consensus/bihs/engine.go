@@ -276,7 +276,10 @@ func (bh *BiHS) FinalizeAndAssemble(chain consensus.ChainHeaderReader, header *t
 func (bh *BiHS) Seal(chain consensus.ChainHeaderReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) (err error) {
 
 	bh.Do(func() {
-		bh.core.Start()
+		err := bh.core.Start()
+		if err != nil {
+			log.Crit("core.Start", "err", err)
+		}
 	})
 
 	bh.core.Propose(context.Background(), (*adapter.Block)(block))

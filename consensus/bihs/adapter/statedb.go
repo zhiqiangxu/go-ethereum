@@ -65,7 +65,7 @@ func (db *StateDB) Validate(blk bihs.Block) (err error) {
 	return db.chain.PreExecuteBlock((*types.Block)(block))
 }
 
-func (db *StateDB) EmptyBlock(height uint64) (bihs.Block, error) {
+func (db *StateDB) MakeBlock(height uint64, mustEmpty bool) (bihs.Block, error) {
 	emptyHeader := db.prepareEmptyHeaderFunc()
 	if emptyHeader == nil {
 		return nil, fmt.Errorf("prepareEmptyHeaderFunc failed")
