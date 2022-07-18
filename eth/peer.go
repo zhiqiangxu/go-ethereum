@@ -37,8 +37,8 @@ type ethPeer struct {
 	snapExt *snapPeer // Satellite `snap` connection
 }
 
-// info gathers and returns some `eth` protocol metadata known about a peer.
-func (p *ethPeer) info() *ethPeerInfo {
+// Info gathers and returns some `eth` protocol metadata known about a peer.
+func (p *ethPeer) Info() *ethPeerInfo {
 	hash, td := p.Head()
 
 	return &ethPeerInfo{

@@ -284,7 +284,7 @@ func newHandler(config *HandlerConfig) (*handler, error) {
 	h.blockFetcher = fetcher.NewBlockFetcher(false, nil, h.chain.GetBlockByHash, validator, h.BroadcastBlock, heighter, nil, inserter, h.removePeer)
 
 	fetchTx := func(peer string, hashes []common.Hash) error {
-		p := h.peers.peer(peer)
+		p := h.peers.Peer(peer)
 		if p == nil {
 			return errors.New("unknown peer")
 		}
@@ -331,27 +331,27 @@ func (h *handler) runEthPeer(peer *eth.Peer, handler eth.Handler) error {
 			// If we are running snap-sync, we want to reserve roughly half the peer
 			// slots for peers supporting the snap protocol.
 			// The logic here is; we only allow up to 5 more non-snap peers than snap-peers.
-			if all, snp := h.peers.len(), h.peers.snapLen(); all-snp > snp+5 {
+			if all, snp := h.peers.Len(), h.peers.snapLen(); all-snp > snp+5 {
 				reject = true
 			}
 		}
 	}
 	// Ignore maxPeers if this is a trusted peer
 	if !peer.Peer.Info().Network.Trusted {
-		if reject || h.peers.len() >= h.maxPeers {
+		if reject || h.peers.Len() >= h.maxPeers {
 			return p2p.DiscTooManyPeers
 		}
 	}
 	peer.Log().Debug("Ethereum peer connected", "name", peer.Name())
 
 	// Register the peer locally
-	if err := h.peers.registerPeer(peer, snap); err != nil {
+	if err := h.peers.RegisterPeer(peer, snap); err != nil {
 		peer.Log().Error("Ethereum peer registration failed", "err", err)
 		return err
 	}
 	defer h.unregisterPeer(peer.ID())
 
-	p := h.peers.peer(peer.ID())
+	p := h.peers.Peer(peer.ID())
 	if p == nil {
 		return errors.New("peer dropped during handling")
 	}
@@ -481,7 +481,7 @@ func (h *handler) runSnapExtension(peer *snap.Peer, handler snap.Handler) error 
 
 // removePeer requests disconnection of a peer.
 func (h *handler) removePeer(id string) {
-	peer := h.peers.peer(id)
+	peer := h.peers.Peer(id)
 	if peer != nil {
 		peer.Peer.Disconnect(p2p.DiscUselessPeer)
 	}
@@ -498,7 +498,7 @@ func (h *handler) unregisterPeer(id string) {
 		logger = log.New("peer", id[:8])
 	}
 	// Abort if the peer does not exist
-	peer := h.peers.peer(id)
+	peer := h.peers.Peer(id)
 	if peer == nil {
 		logger.Error("Ethereum peer removal failed", "err", errPeerNotRegistered)
 		return
@@ -513,7 +513,7 @@ func (h *handler) unregisterPeer(id string) {
 	h.downloader.UnregisterPeer(id)
 	h.txFetcher.Drop(id)
 
-	if err := h.peers.unregisterPeer(id); err != nil {
+	if err := h.peers.UnregisterPeer(id); err != nil {
 		logger.Error("Ethereum peer removal failed", "err", err)
 	}
 }
@@ -550,7 +550,7 @@ func (h *handler) Stop() {
 	// This also closes the gate for any new registrations on the peer set.
 	// sessions which are already established but not added to h.peers yet
 	// will exit when they try to register.
-	h.peers.close()
+	h.peers.Close()
 	h.peerWG.Wait()
 
 	log.Info("Ethereum protocol stopped")
@@ -571,7 +571,7 @@ func (h *handler) BroadcastBlock(block *types.Block, propagate bool) {
 		}
 	}
 	hash := block.Hash()
-	peers := h.peers.peersWithoutBlock(hash)
+	peers := h.peers.PeersWithoutBlock(hash)
 
 	// If propagation is requested, send to a subset of the peer
 	if propagate {
@@ -617,7 +617,7 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 	)
 	// Broadcast transactions to a batch of peers not knowing about it
 	for _, tx := range txs {
-		peers := h.peers.peersWithoutTransaction(tx.Hash())
+		peers := h.peers.PeersWithoutTransaction(tx.Hash())
 		// Send the tx unconditionally to a subset of our peers
 		numDirect := int(math.Sqrt(float64(len(peers))))
 		for _, peer := range peers[:numDirect] {

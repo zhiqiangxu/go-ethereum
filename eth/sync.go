@@ -173,7 +173,7 @@ func (cs *chainSyncer) nextSyncOp() *chainSyncOp {
 	} else if minPeers > cs.handler.maxPeers {
 		minPeers = cs.handler.maxPeers
 	}
-	if cs.handler.peers.len() < minPeers {
+	if cs.handler.peers.Len() < minPeers {
 		return nil
 	}
 	// We have enough peers, pick the one with the highest TD, but avoid going

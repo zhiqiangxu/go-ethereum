@@ -131,9 +131,9 @@ func (ps *PeerSet) waitSnapExtension(peer *eth.Peer) (*snap.Peer, error) {
 	return <-wait, nil
 }
 
-// registerPeer injects a new `eth` peer into the working set, or returns an error
+// RegisterPeer injects a new `eth` peer into the working set, or returns an error
 // if the peer is already known.
-func (ps *PeerSet) registerPeer(peer *eth.Peer, ext *snap.Peer) error {
+func (ps *PeerSet) RegisterPeer(peer *eth.Peer, ext *snap.Peer) error {
 	// Start tracking the new peer
 	ps.lock.Lock()
 	defer ps.lock.Unlock()
@@ -156,9 +156,9 @@ func (ps *PeerSet) registerPeer(peer *eth.Peer, ext *snap.Peer) error {
 	return nil
 }
 
-// unregisterPeer removes a remote peer from the active set, disabling any further
+// UnregisterPeer removes a remote peer from the active set, disabling any further
 // actions to/from that particular entity.
-func (ps *PeerSet) unregisterPeer(id string) error {
+func (ps *PeerSet) UnregisterPeer(id string) error {
 	ps.lock.Lock()
 	defer ps.lock.Unlock()
 
@@ -173,17 +173,17 @@ func (ps *PeerSet) unregisterPeer(id string) error {
 	return nil
 }
 
-// peer retrieves the registered peer with the given id.
-func (ps *PeerSet) peer(id string) *ethPeer {
+// Peer retrieves the registered Peer with the given id.
+func (ps *PeerSet) Peer(id string) *ethPeer {
 	ps.lock.RLock()
 	defer ps.lock.RUnlock()
 
 	return ps.peers[id]
 }
 
-// peersWithoutBlock retrieves a list of peers that do not have a given block in
+// PeersWithoutBlock retrieves a list of peers that do not have a given block in
 // their set of known hashes so it might be propagated to them.
-func (ps *PeerSet) peersWithoutBlock(hash common.Hash) []*ethPeer {
+func (ps *PeerSet) PeersWithoutBlock(hash common.Hash) []*ethPeer {
 	ps.lock.RLock()
 	defer ps.lock.RUnlock()
 
@@ -196,9 +196,9 @@ func (ps *PeerSet) peersWithoutBlock(hash common.Hash) []*ethPeer {
 	return list
 }
 
-// peersWithoutTransaction retrieves a list of peers that do not have a given
+// PeersWithoutTransaction retrieves a list of peers that do not have a given
 // transaction in their set of known hashes.
-func (ps *PeerSet) peersWithoutTransaction(hash common.Hash) []*ethPeer {
+func (ps *PeerSet) PeersWithoutTransaction(hash common.Hash) []*ethPeer {
 	ps.lock.RLock()
 	defer ps.lock.RUnlock()
 
@@ -211,10 +211,10 @@ func (ps *PeerSet) peersWithoutTransaction(hash common.Hash) []*ethPeer {
 	return list
 }
 
-// len returns if the current number of `eth` peers in the set. Since the `snap`
+// Len returns if the current number of `eth` peers in the set. Since the `snap`
 // peers are tied to the existence of an `eth` connection, that will always be a
 // subset of `eth`.
-func (ps *PeerSet) len() int {
+func (ps *PeerSet) Len() int {
 	ps.lock.RLock()
 	defer ps.lock.RUnlock()
 
@@ -247,8 +247,8 @@ func (ps *PeerSet) peerWithHighestTD() *eth.Peer {
 	return bestPeer
 }
 
-// close disconnects all peers.
-func (ps *PeerSet) close() {
+// Close disconnects all peers.
+func (ps *PeerSet) Close() {
 	ps.lock.Lock()
 	defer ps.lock.Unlock()
 
