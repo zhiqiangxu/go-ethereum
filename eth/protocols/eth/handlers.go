@@ -364,9 +364,9 @@ func handleBlockHeaders66(backend Backend, msg Decoder, peer *Peer) error {
 		}
 		return hashes
 	}
-	return peer.dispatchResponse(&Response{
-		id:   res.RequestId,
-		code: BlockHeadersMsg,
+	return peer.DispatchResponse(&Response{
+		ID:   res.RequestId,
+		Code: BlockHeadersMsg,
 		Res:  &res.BlockHeadersPacket,
 	}, metadata)
 }
@@ -389,9 +389,9 @@ func handleBlockBodies66(backend Backend, msg Decoder, peer *Peer) error {
 		}
 		return [][]common.Hash{txsHashes, uncleHashes}
 	}
-	return peer.dispatchResponse(&Response{
-		id:   res.RequestId,
-		code: BlockBodiesMsg,
+	return peer.DispatchResponse(&Response{
+		ID:   res.RequestId,
+		Code: BlockBodiesMsg,
 		Res:  &res.BlockBodiesPacket,
 	}, metadata)
 }
@@ -402,9 +402,9 @@ func handleNodeData66(backend Backend, msg Decoder, peer *Peer) error {
 	if err := msg.Decode(res); err != nil {
 		return fmt.Errorf("%w: message %v: %v", errDecode, msg, err)
 	}
-	return peer.dispatchResponse(&Response{
-		id:   res.RequestId,
-		code: NodeDataMsg,
+	return peer.DispatchResponse(&Response{
+		ID:   res.RequestId,
+		Code: NodeDataMsg,
 		Res:  &res.NodeDataPacket,
 	}, nil) // No post-processing, we're not using this packet anymore
 }
@@ -423,9 +423,9 @@ func handleReceipts66(backend Backend, msg Decoder, peer *Peer) error {
 		}
 		return hashes
 	}
-	return peer.dispatchResponse(&Response{
-		id:   res.RequestId,
-		code: ReceiptsMsg,
+	return peer.DispatchResponse(&Response{
+		ID:   res.RequestId,
+		Code: ReceiptsMsg,
 		Res:  &res.ReceiptsPacket,
 	}, metadata)
 }

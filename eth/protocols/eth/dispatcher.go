@@ -96,9 +96,9 @@ type cancel struct {
 // on the channel assigned by the requester subsystem and contains the original
 // request embedded to allow uniquely matching it caller side.
 type Response struct {
-	id   uint64    // Request ID to match up this reply to
+	ID   uint64    // Request ID to match up this reply to
 	recv time.Time // Timestamp when the request was received
-	code uint64    // Response packet type to cross validate with request
+	Code uint64    // Response packet type to cross validate with request
 
 	Req  *Request      // Original request to cross-reference with
 	Res  interface{}   // Remote response for the request query
@@ -138,7 +138,7 @@ func (p *Peer) dispatchRequest(req *Request) error {
 
 // dispatchRequest fulfils a pending request and delivers it to the requested
 // sink.
-func (p *Peer) dispatchResponse(res *Response, metadata func() interface{}) error {
+func (p *Peer) DispatchResponse(res *Response, metadata func() interface{}) error {
 	resOp := &response{
 		res:  res,
 		fail: make(chan error),
@@ -216,10 +216,10 @@ func (p *Peer) dispatcher() {
 
 		case resOp := <-p.resDispatch:
 			res := resOp.res
-			res.Req = pending[res.id]
+			res.Req = pending[res.ID]
 
 			// Independent if the request exists or not, track this packet
-			requestTracker.Fulfil(p.id, p.version, res.code, res.id)
+			requestTracker.Fulfil(p.id, p.version, res.Code, res.ID)
 
 			switch {
 			case res.Req == nil:
@@ -228,12 +228,12 @@ func (p *Peer) dispatcher() {
 				// means the remote peer implements the protocol badly.
 				resOp.fail <- errDanglingResponse
 
-			case res.Req.want != res.code:
+			case res.Req.want != res.Code:
 				// Response arrived, but it's a different packet type than the
 				// one expected by the requester. Either the local code is bad,
 				// or the remote peer send junk. In neither cases can we handle
 				// the packet.
-				resOp.fail <- fmt.Errorf("%w: have %d, want %d", errMismatchingResponseType, res.code, res.Req.want)
+				resOp.fail <- fmt.Errorf("%w: have %d, want %d", errMismatchingResponseType, res.Code, res.Req.want)
 
 			default:
 				// All dispatcher checks passed and the response was initialized
@@ -243,7 +243,7 @@ func (p *Peer) dispatcher() {
 				resOp.fail <- nil
 
 				// Stop tracking the request, the response dispatcher will deliver
-				delete(pending, res.id)
+				delete(pending, res.ID)
 			}
 
 		case <-p.term:
