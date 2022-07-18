@@ -166,9 +166,9 @@ func (p *Peer) KnownTransaction(hash common.Hash) bool {
 	return p.knownTxs.Contains(hash)
 }
 
-// markBlock marks a block as known for the peer, ensuring that the block will
+// MarkBlock marks a block as known for the peer, ensuring that the block will
 // never be propagated to this particular peer.
-func (p *Peer) markBlock(hash common.Hash) {
+func (p *Peer) MarkBlock(hash common.Hash) {
 	// If we reached the memory allowance, drop a previously known block hash
 	p.knownBlocks.Add(hash)
 }
