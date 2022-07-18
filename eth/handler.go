@@ -74,9 +74,9 @@ type txPool interface {
 	SubscribeNewTxsEvent(chan<- core.NewTxsEvent) event.Subscription
 }
 
-// handlerConfig is the collection of initialization parameters to create a full
+// HandlerConfig is the collection of initialization parameters to create a full
 // node network handler.
-type handlerConfig struct {
+type HandlerConfig struct {
 	Database       ethdb.Database            // Database for direct sync insertions
 	Chain          *core.BlockChain          // Blockchain to serve data from
 	TxPool         txPool                    // Transaction pool to propagate from
@@ -126,7 +126,7 @@ type handler struct {
 }
 
 // newHandler returns a handler for all Ethereum chain management protocol.
-func newHandler(config *handlerConfig) (*handler, error) {
+func newHandler(config *HandlerConfig) (*handler, error) {
 	// Create the protocol manager with the base fields
 	if config.EventMux == nil {
 		config.EventMux = new(event.TypeMux) // Nicety initialization for tests

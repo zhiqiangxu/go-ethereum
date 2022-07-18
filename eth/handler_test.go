@@ -146,7 +146,7 @@ func newTestHandlerWithBlocks(blocks int) *testHandler {
 	}
 	txpool := newTestTxPool()
 
-	handler, _ := newHandler(&handlerConfig{
+	handler, _ := newHandler(&HandlerConfig{
 		Database:   db,
 		Chain:      chain,
 		TxPool:     txpool,
