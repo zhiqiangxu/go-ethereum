@@ -75,6 +75,77 @@ func (p *Peer) Handshake(network uint64, td *big.Int, head common.Hash, genesis 
 	return nil
 }
 
+func (p *Peer) HandshakeLite(network uint64, genesis common.Hash) (err error) {
+	timeout := time.NewTimer(handshakeTimeout)
+	defer timeout.Stop()
+
+	errc := make(chan error, 1)
+	var status StatusPacket
+	go func() {
+		msg, err := p.RW.ReadMsg()
+		if err != nil {
+			errc <- err
+			return
+		}
+		if msg.Code != StatusMsg {
+			errc <- fmt.Errorf("%w: first msg has code %x (!= %x)", errNoStatusMsg, msg.Code, StatusMsg)
+			return
+		}
+
+		if msg.Size > maxMessageSize {
+			errc <- fmt.Errorf("%w: %v > %v", errMsgTooLarge, msg.Size, maxMessageSize)
+			return
+		}
+
+		// Decode the handshake and make sure everything matches
+		if err := msg.Decode(&status); err != nil {
+			errc <- fmt.Errorf("%w: message %v: %v", errDecode, msg, err)
+			return
+		}
+		errc <- nil
+	}()
+
+	select {
+	case err := <-errc:
+		if err != nil {
+			return err
+		}
+	case <-timeout.C:
+		return p2p.DiscReadTimeout
+	}
+
+	if status.NetworkID != network {
+		return fmt.Errorf("%w: %d (!= %d)", errNetworkIDMismatch, status.NetworkID, network)
+	}
+	if uint(status.ProtocolVersion) != p.version {
+		return fmt.Errorf("%w: %d (!= %d)", errProtocolVersionMismatch, status.ProtocolVersion, p.version)
+	}
+	if status.Genesis != genesis {
+		return fmt.Errorf("%w: %x (!= %x)", errGenesisMismatch, status.Genesis, genesis)
+	}
+	p.td, p.head = status.TD, status.Head
+
+	go func() {
+		errc <- p2p.Send(p.RW, StatusMsg, status)
+	}()
+
+	select {
+	case err := <-errc:
+		if err != nil {
+			return err
+		}
+	case <-timeout.C:
+		return p2p.DiscReadTimeout
+	}
+
+	// TD at mainnet block #7753254 is 76 bits. If it becomes 100 million times
+	// larger, it will still fit within 100 bits
+	if tdlen := p.td.BitLen(); tdlen > 100 {
+		return fmt.Errorf("too large total difficulty: bitlen %d", tdlen)
+	}
+	return nil
+}
+
 // readStatus reads the remote handshake message.
 func (p *Peer) readStatus(network uint64, status *StatusPacket, genesis common.Hash, forkFilter forkid.Filter) error {
 	msg, err := p.RW.ReadMsg()

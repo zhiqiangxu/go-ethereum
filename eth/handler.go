@@ -107,7 +107,7 @@ type handler struct {
 	downloader   *downloader.Downloader
 	blockFetcher *fetcher.BlockFetcher
 	txFetcher    *fetcher.TxFetcher
-	peers        *peerSet
+	peers        *PeerSet
 	merger       *consensus.Merger
 
 	eventMux      *event.TypeMux
@@ -138,7 +138,7 @@ func newHandler(config *handlerConfig) (*handler, error) {
 		database:       config.Database,
 		txpool:         config.TxPool,
 		chain:          config.Chain,
-		peers:          newPeerSet(),
+		peers:          NewPeerSet(),
 		merger:         config.Merger,
 		requiredBlocks: config.RequiredBlocks,
 		quitSync:       make(chan struct{}),
