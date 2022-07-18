@@ -69,7 +69,7 @@ type Peer struct {
 	id string // Unique ID for the peer, cached
 
 	*p2p.Peer                   // The embedded P2P package peer
-	rw        p2p.MsgReadWriter // Input/output streams for snap
+	RW        p2p.MsgReadWriter // Input/output streams for snap
 	version   uint              // Protocol version negotiated
 
 	head common.Hash // Latest advertised head block hash
@@ -98,7 +98,7 @@ func NewPeer(version uint, p *p2p.Peer, rw p2p.MsgReadWriter, txpool TxPool) *Pe
 	peer := &Peer{
 		id:              p.ID().String(),
 		Peer:            p,
-		rw:              rw,
+		RW:              rw,
 		version:         version,
 		knownTxs:        newKnownCache(maxKnownTxs),
 		knownBlocks:     newKnownCache(maxKnownBlocks),
@@ -194,7 +194,7 @@ func (p *Peer) SendTransactions(txs types.Transactions) error {
 	for _, tx := range txs {
 		p.knownTxs.Add(tx.Hash())
 	}
-	return p2p.Send(p.rw, TransactionsMsg, txs)
+	return p2p.Send(p.RW, TransactionsMsg, txs)
 }
 
 // AsyncSendTransactions queues a list of transactions (by hash) to eventually
@@ -219,7 +219,7 @@ func (p *Peer) AsyncSendTransactions(hashes []common.Hash) {
 func (p *Peer) sendPooledTransactionHashes(hashes []common.Hash) error {
 	// Mark all the transactions as known, but ensure we don't overflow our limits
 	p.knownTxs.Add(hashes...)
-	return p2p.Send(p.rw, NewPooledTransactionHashesMsg, NewPooledTransactionHashesPacket(hashes))
+	return p2p.Send(p.RW, NewPooledTransactionHashesMsg, NewPooledTransactionHashesPacket(hashes))
 }
 
 // AsyncSendPooledTransactionHashes queues a list of transactions hashes to eventually
@@ -241,7 +241,7 @@ func (p *Peer) ReplyPooledTransactionsRLP(id uint64, hashes []common.Hash, txs [
 	p.knownTxs.Add(hashes...)
 
 	// Not packed into PooledTransactionsPacket to avoid RLP decoding
-	return p2p.Send(p.rw, PooledTransactionsMsg, &PooledTransactionsRLPPacket66{
+	return p2p.Send(p.RW, PooledTransactionsMsg, &PooledTransactionsRLPPacket66{
 		RequestId:                   id,
 		PooledTransactionsRLPPacket: txs,
 	})
@@ -258,7 +258,7 @@ func (p *Peer) SendNewBlockHashes(hashes []common.Hash, numbers []uint64) error 
 		request[i].Hash = hashes[i]
 		request[i].Number = numbers[i]
 	}
-	return p2p.Send(p.rw, NewBlockHashesMsg, request)
+	return p2p.Send(p.RW, NewBlockHashesMsg, request)
 }
 
 // AsyncSendNewBlockHash queues the availability of a block for propagation to a
@@ -278,7 +278,7 @@ func (p *Peer) AsyncSendNewBlockHash(block *types.Block) {
 func (p *Peer) SendNewBlock(block *types.Block, td *big.Int) error {
 	// Mark all the block hash as known, but ensure we don't overflow our limits
 	p.knownBlocks.Add(block.Hash())
-	return p2p.Send(p.rw, NewBlockMsg, &NewBlockPacket{
+	return p2p.Send(p.RW, NewBlockMsg, &NewBlockPacket{
 		Block: block,
 		TD:    td,
 	})
@@ -298,7 +298,7 @@ func (p *Peer) AsyncSendNewBlock(block *types.Block, td *big.Int) {
 
 // ReplyBlockHeadersRLP is the eth/66 response to GetBlockHeaders.
 func (p *Peer) ReplyBlockHeadersRLP(id uint64, headers []rlp.RawValue) error {
-	return p2p.Send(p.rw, BlockHeadersMsg, &BlockHeadersRLPPacket66{
+	return p2p.Send(p.RW, BlockHeadersMsg, &BlockHeadersRLPPacket66{
 		RequestId:             id,
 		BlockHeadersRLPPacket: headers,
 	})
@@ -307,7 +307,7 @@ func (p *Peer) ReplyBlockHeadersRLP(id uint64, headers []rlp.RawValue) error {
 // ReplyBlockBodiesRLP is the eth/66 response to GetBlockBodies.
 func (p *Peer) ReplyBlockBodiesRLP(id uint64, bodies []rlp.RawValue) error {
 	// Not packed into BlockBodiesPacket to avoid RLP decoding
-	return p2p.Send(p.rw, BlockBodiesMsg, &BlockBodiesRLPPacket66{
+	return p2p.Send(p.RW, BlockBodiesMsg, &BlockBodiesRLPPacket66{
 		RequestId:            id,
 		BlockBodiesRLPPacket: bodies,
 	})
@@ -315,7 +315,7 @@ func (p *Peer) ReplyBlockBodiesRLP(id uint64, bodies []rlp.RawValue) error {
 
 // ReplyNodeData is the eth/66 response to GetNodeData.
 func (p *Peer) ReplyNodeData(id uint64, data [][]byte) error {
-	return p2p.Send(p.rw, NodeDataMsg, &NodeDataPacket66{
+	return p2p.Send(p.RW, NodeDataMsg, &NodeDataPacket66{
 		RequestId:      id,
 		NodeDataPacket: data,
 	})
@@ -323,7 +323,7 @@ func (p *Peer) ReplyNodeData(id uint64, data [][]byte) error {
 
 // ReplyReceiptsRLP is the eth/66 response to GetReceipts.
 func (p *Peer) ReplyReceiptsRLP(id uint64, receipts []rlp.RawValue) error {
-	return p2p.Send(p.rw, ReceiptsMsg, &ReceiptsRLPPacket66{
+	return p2p.Send(p.RW, ReceiptsMsg, &ReceiptsRLPPacket66{
 		RequestId:         id,
 		ReceiptsRLPPacket: receipts,
 	})
@@ -481,7 +481,7 @@ func (p *Peer) RequestTxs(hashes []common.Hash) error {
 	id := rand.Uint64()
 
 	requestTracker.Track(p.id, p.version, GetPooledTransactionsMsg, PooledTransactionsMsg, id)
-	return p2p.Send(p.rw, GetPooledTransactionsMsg, &GetPooledTransactionsPacket66{
+	return p2p.Send(p.RW, GetPooledTransactionsMsg, &GetPooledTransactionsPacket66{
 		RequestId:                   id,
 		GetPooledTransactionsPacket: hashes,
 	})

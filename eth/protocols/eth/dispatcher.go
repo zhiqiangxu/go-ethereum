@@ -195,7 +195,7 @@ func (p *Peer) dispatcher() {
 			req.Sent = time.Now()
 
 			requestTracker.Track(p.id, p.version, req.code, req.want, req.id)
-			err := p2p.Send(p.rw, req.code, req.data)
+			err := p2p.Send(p.RW, req.code, req.data)
 			reqOp.fail <- err
 
 			if err == nil {
