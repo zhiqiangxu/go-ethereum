@@ -48,7 +48,7 @@ var (
 // PeerSet represents the collection of active peers currently participating in
 // the `eth` protocol, with or without the `snap` extension.
 type PeerSet struct {
-	peers     map[string]*ethPeer // Peers connected on the `eth` protocol
+	peers     map[string]*EthPeer // Peers connected on the `eth` protocol
 	snapPeers int                 // Number of `snap` compatible peers for connection prioritization
 
 	snapWait map[string]chan *snap.Peer // Peers connected on `eth` waiting for their snap extension
@@ -61,7 +61,7 @@ type PeerSet struct {
 // NewPeerSet creates a new peer set to track the active participants.
 func NewPeerSet() *PeerSet {
 	return &PeerSet{
-		peers:    make(map[string]*ethPeer),
+		peers:    make(map[string]*EthPeer),
 		snapWait: make(map[string]chan *snap.Peer),
 		snapPend: make(map[string]*snap.Peer),
 	}
@@ -145,7 +145,7 @@ func (ps *PeerSet) RegisterPeer(peer *eth.Peer, ext *snap.Peer) error {
 	if _, ok := ps.peers[id]; ok {
 		return errPeerAlreadyRegistered
 	}
-	eth := &ethPeer{
+	eth := &EthPeer{
 		Peer: peer,
 	}
 	if ext != nil {
@@ -174,7 +174,7 @@ func (ps *PeerSet) UnregisterPeer(id string) error {
 }
 
 // Peer retrieves the registered Peer with the given id.
-func (ps *PeerSet) Peer(id string) *ethPeer {
+func (ps *PeerSet) Peer(id string) *EthPeer {
 	ps.lock.RLock()
 	defer ps.lock.RUnlock()
 
@@ -183,11 +183,11 @@ func (ps *PeerSet) Peer(id string) *ethPeer {
 
 // PeersWithoutBlock retrieves a list of peers that do not have a given block in
 // their set of known hashes so it might be propagated to them.
-func (ps *PeerSet) PeersWithoutBlock(hash common.Hash) []*ethPeer {
+func (ps *PeerSet) PeersWithoutBlock(hash common.Hash) []*EthPeer {
 	ps.lock.RLock()
 	defer ps.lock.RUnlock()
 
-	list := make([]*ethPeer, 0, len(ps.peers))
+	list := make([]*EthPeer, 0, len(ps.peers))
 	for _, p := range ps.peers {
 		if !p.KnownBlock(hash) {
 			list = append(list, p)
@@ -198,11 +198,11 @@ func (ps *PeerSet) PeersWithoutBlock(hash common.Hash) []*ethPeer {
 
 // PeersWithoutTransaction retrieves a list of peers that do not have a given
 // transaction in their set of known hashes.
-func (ps *PeerSet) PeersWithoutTransaction(hash common.Hash) []*ethPeer {
+func (ps *PeerSet) PeersWithoutTransaction(hash common.Hash) []*EthPeer {
 	ps.lock.RLock()
 	defer ps.lock.RUnlock()
 
-	list := make([]*ethPeer, 0, len(ps.peers))
+	list := make([]*EthPeer, 0, len(ps.peers))
 	for _, p := range ps.peers {
 		if !p.KnownTransaction(hash) {
 			list = append(list, p)

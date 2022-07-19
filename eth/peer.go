@@ -31,14 +31,14 @@ type ethPeerInfo struct {
 	Head       string   `json:"head"`       // Hex hash of the peer's best owned block
 }
 
-// ethPeer is a wrapper around eth.Peer to maintain a few extra metadata.
-type ethPeer struct {
+// EthPeer is a wrapper around eth.Peer to maintain a few extra metadata.
+type EthPeer struct {
 	*eth.Peer
 	snapExt *snapPeer // Satellite `snap` connection
 }
 
 // Info gathers and returns some `eth` protocol metadata known about a peer.
-func (p *ethPeer) Info() *ethPeerInfo {
+func (p *EthPeer) Info() *ethPeerInfo {
 	hash, td := p.Head()
 
 	return &ethPeerInfo{
