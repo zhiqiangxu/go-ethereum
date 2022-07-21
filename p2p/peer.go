@@ -309,7 +309,7 @@ func (p *Peer) pingLoop() {
 			}
 			fn := func() {
 				ping.Reset(pingInterval)
-				log.Debug("pingpong latency", time.Since(start).Nanoseconds())
+				p.log.Debug("pingpong latency", time.Since(start).Nanoseconds())
 			}
 			atomic.SwapPointer(&p.pingCB, unsafe.Pointer(&fn))
 		case <-p.closed:
