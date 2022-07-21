@@ -23,7 +23,9 @@ import (
 	"net"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
+	"unsafe"
 
 	"github.com/ethereum/go-ethereum/common/mclock"
 	"github.com/ethereum/go-ethereum/event"
@@ -117,7 +119,7 @@ type Peer struct {
 	// events receives message send / receive events if set
 	events   *event.Feed
 	testPipe *MsgPipeRW // for testing
-	pingCB   func()
+	pingCB   unsafe.Pointer
 }
 
 // NewPeer returns a peer for testing purposes.
@@ -335,7 +337,7 @@ func (p *Peer) Ping(cb func()) (err error) {
 		return
 	}
 
-	p.pingCB = cb
+	atomic.SwapPointer(&p.pingCB, unsafe.Pointer(&cb))
 	return
 }
 
@@ -346,10 +348,10 @@ func (p *Peer) handle(msg Msg) error {
 		go SendItems(p.rw, pongMsg)
 	case msg.Code == pongMsg:
 		msg.Discard()
-		cb := p.pingCB
+		cb := atomic.SwapPointer(&p.pingCB, nil)
 		if cb != nil {
-			p.pingCB = nil
-			cb()
+			fn := (*func())(cb)
+			(*fn)()
 		}
 	case msg.Code == discMsg:
 		// This is the last message. We don't need to discard or
