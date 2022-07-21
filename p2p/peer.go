@@ -302,11 +302,16 @@ func (p *Peer) pingLoop() {
 	for {
 		select {
 		case <-ping.C:
+			start := time.Now()
 			if err := SendItems(p.rw, pingMsg); err != nil {
 				p.protoErr <- err
 				return
 			}
-			ping.Reset(pingInterval)
+			fn := func() {
+				ping.Reset(pingInterval)
+				log.Debug("pingpong latency", time.Since(start).Nanoseconds())
+			}
+			atomic.SwapPointer(&p.pingCB, unsafe.Pointer(&fn))
 		case <-p.closed:
 			return
 		}
@@ -327,18 +332,6 @@ func (p *Peer) readLoop(errc chan<- error) {
 			return
 		}
 	}
-}
-
-// this method is not concurrent safe
-func (p *Peer) Ping(cb func()) (err error) {
-
-	err = SendItems(p.rw, pingMsg)
-	if err != nil {
-		return
-	}
-
-	atomic.SwapPointer(&p.pingCB, unsafe.Pointer(&cb))
-	return
 }
 
 func (p *Peer) handle(msg Msg) error {
