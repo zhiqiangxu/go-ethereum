@@ -117,6 +117,7 @@ type Peer struct {
 	// events receives message send / receive events if set
 	events   *event.Feed
 	testPipe *MsgPipeRW // for testing
+	pingCB   func()
 }
 
 // NewPeer returns a peer for testing purposes.
@@ -326,11 +327,30 @@ func (p *Peer) readLoop(errc chan<- error) {
 	}
 }
 
+// this method is not concurrent safe
+func (p *Peer) Ping(cb func()) (err error) {
+
+	err = SendItems(p.rw, pingMsg)
+	if err != nil {
+		return
+	}
+
+	p.pingCB = cb
+	return
+}
+
 func (p *Peer) handle(msg Msg) error {
 	switch {
 	case msg.Code == pingMsg:
 		msg.Discard()
 		go SendItems(p.rw, pongMsg)
+	case msg.Code == pongMsg:
+		msg.Discard()
+		cb := p.pingCB
+		if cb != nil {
+			p.pingCB = nil
+			cb()
+		}
 	case msg.Code == discMsg:
 		// This is the last message. We don't need to discard or
 		// check errors because, the connection will be closed after it.
