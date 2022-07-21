@@ -196,6 +196,17 @@ func (ps *PeerSet) PeersWithoutBlock(hash common.Hash) []*EthPeer {
 	return list
 }
 
+func (ps *PeerSet) AllPeers() []*EthPeer {
+	ps.lock.RLock()
+	defer ps.lock.RUnlock()
+
+	list := make([]*EthPeer, 0, len(ps.peers))
+	for _, p := range ps.peers {
+		list = append(list, p)
+	}
+	return list
+}
+
 // PeersWithoutTransaction retrieves a list of peers that do not have a given
 // transaction in their set of known hashes.
 func (ps *PeerSet) PeersWithoutTransaction(hash common.Hash) []*EthPeer {
