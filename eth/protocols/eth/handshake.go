@@ -75,7 +75,7 @@ func (p *Peer) Handshake(network uint64, td *big.Int, head common.Hash, genesis 
 	return nil
 }
 
-func (p *Peer) HandshakeLite(network uint64, genesis common.Hash) (err error) {
+func (p *Peer) HandshakeLite(network uint64, genesis common.Hash, upgrade bool) (err error) {
 	timeout := time.NewTimer(handshakeTimeout)
 	defer timeout.Stop()
 
@@ -136,6 +136,72 @@ func (p *Peer) HandshakeLite(network uint64, genesis common.Hash) (err error) {
 		}
 	case <-timeout.C:
 		return p2p.DiscReadTimeout
+	}
+
+	if p.version >= ETH67 && upgrade {
+		extension := &UpgradeStatusExtension{
+			DisablePeerTxBroadcast: false,
+		}
+
+		extensionRaw, err := extension.Encode()
+		if err != nil {
+			return err
+		}
+
+		go func() {
+			errc <- p2p.Send(p.RW, UpgradeStatusMsg, &UpgradeStatusPacket{
+				Extension: extensionRaw,
+			})
+		}()
+
+		var upgradeStatus UpgradeStatusPacket
+		go func() {
+			msg, err := p.RW.ReadMsg()
+			if err != nil {
+				errc <- err
+				return
+			}
+			if msg.Code != UpgradeStatusMsg {
+				errc <- fmt.Errorf("%w: first msg has code %x (!= %x)", errNoStatusMsg, msg.Code, UpgradeStatusMsg)
+				return
+			}
+
+			if msg.Size > maxMessageSize {
+				errc <- fmt.Errorf("%w: %v > %v", errMsgTooLarge, msg.Size, maxMessageSize)
+				return
+			}
+
+			// Decode the handshake and make sure everything matches
+			if err := msg.Decode(&upgradeStatus); err != nil {
+				errc <- fmt.Errorf("%w: message %v: %v", errDecode, msg, err)
+				return
+			}
+			errc <- nil
+		}()
+
+		timeout = time.NewTimer(handshakeTimeout)
+		defer timeout.Stop()
+
+		for i := 0; i < 2; i++ {
+			select {
+			case err = <-errc:
+				if err != nil {
+					return err
+				}
+			case <-timeout.C:
+				return p2p.DiscReadTimeout
+			}
+		}
+
+		extension, err = upgradeStatus.GetExtension()
+		if err != nil {
+			return err
+		}
+		p.statusExtension = extension
+
+		if p.statusExtension.DisablePeerTxBroadcast {
+			p.CloseTxBroadcast()
+		}
 	}
 
 	// TD at mainnet block #7753254 is 76 bits. If it becomes 100 million times

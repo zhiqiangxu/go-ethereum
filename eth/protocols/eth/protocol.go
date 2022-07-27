@@ -65,6 +65,9 @@ const (
 	NewPooledTransactionHashesMsg = 0x08
 	GetPooledTransactionsMsg      = 0x09
 	PooledTransactionsMsg         = 0x0a
+
+	// Protocol messages overloaded in eth/66
+	UpgradeStatusMsg = 0x0b
 )
 
 var (
@@ -92,6 +95,35 @@ type StatusPacket struct {
 	Head            common.Hash
 	Genesis         common.Hash
 	ForkID          forkid.ID
+}
+
+type UpgradeStatusExtension struct {
+	DisablePeerTxBroadcast bool
+}
+
+func (e *UpgradeStatusExtension) Encode() (*rlp.RawValue, error) {
+	rawBytes, err := rlp.EncodeToBytes(e)
+	if err != nil {
+		return nil, err
+	}
+	raw := rlp.RawValue(rawBytes)
+	return &raw, nil
+}
+
+type UpgradeStatusPacket struct {
+	Extension *rlp.RawValue `rlp:"nil"`
+}
+
+func (p *UpgradeStatusPacket) GetExtension() (*UpgradeStatusExtension, error) {
+	extension := &UpgradeStatusExtension{}
+	if p.Extension == nil {
+		return extension, nil
+	}
+	err := rlp.DecodeBytes(*p.Extension, extension)
+	if err != nil {
+		return nil, err
+	}
+	return extension, nil
 }
 
 // NewBlockHashesPacket is the network packet for the block announcements.
