@@ -126,7 +126,7 @@ func (p *Peer) HandshakeLite(network uint64, genesis common.Hash, upgrade bool) 
 	p.td, p.head = status.TD, status.Head
 
 	go func() {
-		errc <- p2p.Send(p.RW, StatusMsg, status)
+		errc <- p2p.PSend(p.RW.(p2p.PriorityMsgWriter), StatusMsg, status)
 	}()
 
 	select {
@@ -149,7 +149,7 @@ func (p *Peer) HandshakeLite(network uint64, genesis common.Hash, upgrade bool) 
 		}
 
 		go func() {
-			errc <- p2p.Send(p.RW, UpgradeStatusMsg, &UpgradeStatusPacket{
+			errc <- p2p.PSend(p.RW.(p2p.PriorityMsgWriter), UpgradeStatusMsg, &UpgradeStatusPacket{
 				Extension: extensionRaw,
 			})
 		}()

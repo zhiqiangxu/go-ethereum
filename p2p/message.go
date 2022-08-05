@@ -29,6 +29,11 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
+type PMsg struct {
+	Msg
+	Werr chan error
+}
+
 // Msg defines the structure of a p2p message.
 //
 // Note that a Msg can only be sent once since the Payload reader is
@@ -92,6 +97,19 @@ type MsgWriter interface {
 type MsgReadWriter interface {
 	MsgReader
 	MsgWriter
+}
+
+type PriorityMsgWriter interface {
+	MsgWriter
+	PWriteMsg(Msg) error
+}
+
+func PSend(w PriorityMsgWriter, msgcode uint64, data interface{}) error {
+	size, r, err := rlp.EncodeToReader(data)
+	if err != nil {
+		return err
+	}
+	return w.PWriteMsg(Msg{Code: msgcode, Size: uint32(size), Payload: r})
 }
 
 // Send writes an RLP-encoded message with the given code.

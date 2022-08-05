@@ -403,7 +403,7 @@ outer:
 					offset -= old.Length
 				}
 				// Assign the new match
-				result[cap.Name] = &protoRW{Protocol: proto, offset: offset, in: make(chan Msg), w: rw}
+				result[cap.Name] = &protoRW{Protocol: proto, offset: offset, in: make(chan Msg), pout: make(chan PMsg), w: rw}
 				offset += proto.Length
 
 				continue outer
@@ -452,12 +452,51 @@ func (p *Peer) getProto(code uint64) (*protoRW, error) {
 
 type protoRW struct {
 	Protocol
-	in     chan Msg        // receives read messages
+	in     chan Msg // receives read messages
+	pout   chan PMsg
 	closed <-chan struct{} // receives when peer is shutting down
 	wstart <-chan struct{} // receives when write may start
 	werr   chan<- error    // for write results
 	offset uint64
 	w      MsgWriter
+}
+
+func (rw *protoRW) PWriteMsg(msg Msg) (err error) {
+	if msg.Code >= rw.Length {
+		return newPeerError(errInvalidMsgCode, "not handled")
+	}
+	msg.meterCap = rw.cap()
+	msg.meterCode = msg.Code
+	msg.Code += rw.offset
+	werr := make(chan error, 1)
+	//ffmt.Print("WriteMsg", msg)
+	select {
+	case <-rw.wstart:
+		err = rw.w.WriteMsg(msg)
+		if err != nil {
+			rw.werr <- err
+			break
+		}
+	LOOP:
+		for {
+			select {
+			case pmsg := <-rw.pout:
+				err = rw.w.WriteMsg(pmsg.Msg)
+				pmsg.Werr <- err
+				if err != nil {
+					break LOOP
+				}
+			default:
+				break LOOP
+			}
+		}
+		rw.werr <- err
+	case rw.pout <- PMsg{Msg: msg, Werr: werr}:
+		err = <-werr
+	case <-rw.closed:
+		err = ErrShuttingDown
+	}
+	return err
 }
 
 func (rw *protoRW) WriteMsg(msg Msg) (err error) {
@@ -466,16 +505,29 @@ func (rw *protoRW) WriteMsg(msg Msg) (err error) {
 	}
 	msg.meterCap = rw.cap()
 	msg.meterCode = msg.Code
-
 	msg.Code += rw.offset
-
+	//ffmt.Print("WriteMsg", msg)
 	select {
 	case <-rw.wstart:
+	LOOP:
+		for {
+			select {
+			case pmsg := <-rw.pout:
+				err = rw.w.WriteMsg(pmsg.Msg)
+				pmsg.Werr <- err
+				if err != nil {
+					goto END
+				}
+			default:
+				break LOOP
+			}
+		}
 		err = rw.w.WriteMsg(msg)
 		// Report write status back to Peer.run. It will initiate
 		// shutdown if the error is non-nil and unblock the next write
 		// otherwise. The calling protocol code should exit for errors
 		// as well but we don't want to rely on that.
+	END:
 		rw.werr <- err
 	case <-rw.closed:
 		err = ErrShuttingDown
