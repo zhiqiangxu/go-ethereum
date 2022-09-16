@@ -81,6 +81,10 @@ func (h *ethHandler) Handle(peer *eth.Peer, packet eth.Packet) error {
 	}
 }
 
+func (h *ethHandler) HandleSyncChallenge(peer *eth.Peer, msg eth.Decoder) error {
+	return nil
+}
+
 // handleBlockAnnounces is invoked from a peer's message handler when it transmits a
 // batch of block announcements for the local node to process.
 func (h *ethHandler) handleBlockAnnounces(peer *eth.Peer, hashes []common.Hash, numbers []uint64) error {
