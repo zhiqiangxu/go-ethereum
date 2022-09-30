@@ -97,6 +97,10 @@ func TestLegacyReceiptDecoding(t *testing.T) {
 		encode func(*Receipt) ([]byte, error)
 	}{
 		{
+			"storedReceiptRLPComplete",
+			encodeAsStoredReceiptRLPComplete,
+		},
+		{
 			"StoredReceiptRLP",
 			encodeAsStoredReceiptRLP,
 		},
@@ -168,6 +172,25 @@ func TestLegacyReceiptDecoding(t *testing.T) {
 			}
 		})
 	}
+}
+
+func encodeAsStoredReceiptRLPComplete(want *Receipt) ([]byte, error) {
+	var contract *common.Address
+	if want.ContractAddress != (common.Address{}) {
+		contract = &want.ContractAddress
+	}
+	stored := &storedReceiptRLPComplete{
+		Type:              want.Type,
+		TxHash:            want.TxHash,
+		ContractAddress:   contract,
+		PostStateOrStatus: want.statusEncoding(),
+		CumulativeGasUsed: want.CumulativeGasUsed,
+		Logs:              make([]*LogForStorage, len(want.Logs)),
+	}
+	for i, log := range want.Logs {
+		stored.Logs[i] = (*LogForStorage)(log)
+	}
+	return rlp.EncodeToBytes(stored)
 }
 
 func encodeAsStoredReceiptRLP(want *Receipt) ([]byte, error) {
