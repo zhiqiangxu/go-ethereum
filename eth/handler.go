@@ -300,7 +300,7 @@ func newHandler(config *HandlerConfig) (*handler, error) {
 func (h *handler) runEthPeer(peer *eth.Peer, handler eth.Handler) error {
 	// If the peer has a `snap` extension, wait for it to connect so we can have
 	// a uniform initialization/teardown mechanism
-	snap, err := h.peers.waitSnapExtension(peer)
+	snap, err := h.peers.WaitSnapExtension(peer)
 	if err != nil {
 		peer.Log().Error("Snapshot extension barrier failed", "err", err)
 		return err
@@ -472,7 +472,7 @@ func (h *handler) runSnapExtension(peer *snap.Peer, handler snap.Handler) error 
 	h.peerWG.Add(1)
 	defer h.peerWG.Done()
 
-	if err := h.peers.registerSnapExtension(peer); err != nil {
+	if err := h.peers.RegisterSnapExtension(peer); err != nil {
 		peer.Log().Warn("Snapshot extension registration failed", "err", err)
 		return err
 	}
@@ -504,10 +504,10 @@ func (h *handler) unregisterPeer(id string) {
 		return
 	}
 	// Remove the `eth` peer if it exists
-	logger.Debug("Removing Ethereum peer", "snap", peer.snapExt != nil)
+	logger.Debug("Removing Ethereum peer", "snap", peer.SnapExt != nil)
 
 	// Remove the `snap` extension if it exists
-	if peer.snapExt != nil {
+	if peer.SnapExt != nil {
 		h.downloader.SnapSyncer.Unregister(id)
 	}
 	h.downloader.UnregisterPeer(id)

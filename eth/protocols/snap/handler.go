@@ -132,7 +132,7 @@ func Handle(backend Backend, peer *Peer) error {
 // returning any error.
 func HandleMessage(backend Backend, peer *Peer) error {
 	// Read the next message from the remote peer, and ensure it's fully consumed
-	msg, err := peer.rw.ReadMsg()
+	msg, err := peer.RW.ReadMsg()
 	if err != nil {
 		return err
 	}
@@ -165,7 +165,7 @@ func HandleMessage(backend Backend, peer *Peer) error {
 		accounts, proofs := ServiceGetAccountRangeQuery(backend.Chain(), &req)
 
 		// Send back anything accumulated (or empty in case of errors)
-		return p2p.Send(peer.rw, AccountRangeMsg, &AccountRangePacket{
+		return p2p.Send(peer.RW, AccountRangeMsg, &AccountRangePacket{
 			ID:       req.ID,
 			Accounts: accounts,
 			Proof:    proofs,
@@ -197,7 +197,7 @@ func HandleMessage(backend Backend, peer *Peer) error {
 		slots, proofs := ServiceGetStorageRangesQuery(backend.Chain(), &req)
 
 		// Send back anything accumulated (or empty in case of errors)
-		return p2p.Send(peer.rw, StorageRangesMsg, &StorageRangesPacket{
+		return p2p.Send(peer.RW, StorageRangesMsg, &StorageRangesPacket{
 			ID:    req.ID,
 			Slots: slots,
 			Proof: proofs,
@@ -231,7 +231,7 @@ func HandleMessage(backend Backend, peer *Peer) error {
 		codes := ServiceGetByteCodesQuery(backend.Chain(), &req)
 
 		// Send back anything accumulated (or empty in case of errors)
-		return p2p.Send(peer.rw, ByteCodesMsg, &ByteCodesPacket{
+		return p2p.Send(peer.RW, ByteCodesMsg, &ByteCodesPacket{
 			ID:    req.ID,
 			Codes: codes,
 		})
@@ -258,7 +258,7 @@ func HandleMessage(backend Backend, peer *Peer) error {
 			return err
 		}
 		// Send back anything accumulated (or empty in case of errors)
-		return p2p.Send(peer.rw, TrieNodesMsg, &TrieNodesPacket{
+		return p2p.Send(peer.RW, TrieNodesMsg, &TrieNodesPacket{
 			ID:    req.ID,
 			Nodes: nodes,
 		})

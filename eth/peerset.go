@@ -67,10 +67,10 @@ func NewPeerSet() *PeerSet {
 	}
 }
 
-// registerSnapExtension unblocks an already connected `eth` peer waiting for its
+// RegisterSnapExtension unblocks an already connected `eth` peer waiting for its
 // `snap` extension, or if no such peer exists, tracks the extension for the time
 // being until the `eth` main protocol starts looking for it.
-func (ps *PeerSet) registerSnapExtension(peer *snap.Peer) error {
+func (ps *PeerSet) RegisterSnapExtension(peer *snap.Peer) error {
 	// Reject the peer if it advertises `snap` without `eth` as `snap` is only a
 	// satellite protocol meaningful with the chain selection of `eth`
 	if !peer.RunningCap(eth.ProtocolName, eth.ProtocolVersions) {
@@ -99,7 +99,7 @@ func (ps *PeerSet) registerSnapExtension(peer *snap.Peer) error {
 
 // waitExtensions blocks until all satellite protocols are connected and tracked
 // by the peerset.
-func (ps *PeerSet) waitSnapExtension(peer *eth.Peer) (*snap.Peer, error) {
+func (ps *PeerSet) WaitSnapExtension(peer *eth.Peer) (*snap.Peer, error) {
 	// If the peer does not support a compatible `snap`, don't wait
 	if !peer.RunningCap(snap.ProtocolName, snap.ProtocolVersions) {
 		return nil, nil
@@ -149,7 +149,7 @@ func (ps *PeerSet) RegisterPeer(peer *eth.Peer, ext *snap.Peer) error {
 		Peer: peer,
 	}
 	if ext != nil {
-		eth.snapExt = &snapPeer{ext}
+		eth.SnapExt = &SnapPeer{ext}
 		ps.snapPeers++
 	}
 	ps.peers[id] = eth
@@ -167,7 +167,7 @@ func (ps *PeerSet) UnregisterPeer(id string) error {
 		return errPeerNotRegistered
 	}
 	delete(ps.peers, id)
-	if peer.snapExt != nil {
+	if peer.SnapExt != nil {
 		ps.snapPeers--
 	}
 	return nil

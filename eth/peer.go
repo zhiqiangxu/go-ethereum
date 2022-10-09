@@ -34,7 +34,7 @@ type ethPeerInfo struct {
 // EthPeer is a wrapper around eth.Peer to maintain a few extra metadata.
 type EthPeer struct {
 	*eth.Peer
-	snapExt *snapPeer // Satellite `snap` connection
+	SnapExt *SnapPeer // Satellite `snap` connection
 }
 
 // Info gathers and returns some `eth` protocol metadata known about a peer.
@@ -48,20 +48,20 @@ func (p *EthPeer) Info() *ethPeerInfo {
 	}
 }
 
-// snapPeerInfo represents a short summary of the `snap` sub-protocol metadata known
+// SnapPeerInfo represents a short summary of the `snap` sub-protocol metadata known
 // about a connected peer.
-type snapPeerInfo struct {
+type SnapPeerInfo struct {
 	Version uint `json:"version"` // Snapshot protocol version negotiated
 }
 
-// snapPeer is a wrapper around snap.Peer to maintain a few extra metadata.
-type snapPeer struct {
+// SnapPeer is a wrapper around snap.Peer to maintain a few extra metadata.
+type SnapPeer struct {
 	*snap.Peer
 }
 
-// info gathers and returns some `snap` protocol metadata known about a peer.
-func (p *snapPeer) info() *snapPeerInfo {
-	return &snapPeerInfo{
+// Info gathers and returns some `snap` protocol metadata known about a peer.
+func (p *SnapPeer) Info() *SnapPeerInfo {
+	return &SnapPeerInfo{
 		Version: p.Version(),
 	}
 }
