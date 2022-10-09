@@ -81,7 +81,7 @@ func (h *ethHandler) Handle(peer *eth.Peer, packet eth.Packet) error {
 	}
 }
 
-func (h *ethHandler) HandleSyncChallenge(peer *eth.Peer, msg eth.Decoder) error {
+func (h *ethHandler) HandleSyncChallenge(peer *eth.Peer, query eth.GetBlockHeadersPacket66) error {
 	return nil
 }
 

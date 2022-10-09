@@ -86,7 +86,7 @@ type Backend interface {
 	// be forwarded to the backend.
 	Handle(peer *Peer, packet Packet) error
 
-	HandleSyncChallenge(peer *Peer, msg Decoder) error
+	HandleSyncChallenge(peer *Peer, query GetBlockHeadersPacket66) error
 }
 
 // TxPool defines the methods needed by the protocol handler to serve transactions.
