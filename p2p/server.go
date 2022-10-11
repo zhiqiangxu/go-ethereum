@@ -39,6 +39,7 @@ import (
 	"github.com/ethereum/go-ethereum/p2p/enr"
 	"github.com/ethereum/go-ethereum/p2p/nat"
 	"github.com/ethereum/go-ethereum/p2p/netutil"
+	"github.com/zhiqiangxu/devp2p"
 )
 
 const (
@@ -159,6 +160,8 @@ type Config struct {
 	// Logger is a custom logger to use with the p2p.Server.
 	Logger log.Logger `toml:",omitempty"`
 
+	ExtraConfig devp2p.ExtraConfig
+
 	clock mclock.Clock
 }
 
@@ -184,7 +187,7 @@ type Server struct {
 
 	nodedb    *enode.DB
 	localnode *enode.LocalNode
-	ntab      *discover.UDPv4
+	ntab      *devp2p.UDPv4
 	DiscV5    *discover.UDPv5
 	discmix   *enode.FairMix
 	dialsched *dialScheduler
@@ -597,7 +600,7 @@ func (srv *Server) setupDiscovery() error {
 			Unhandled:   unhandled,
 			Log:         srv.log,
 		}
-		ntab, err := discover.ListenV4(conn, srv.localnode, cfg)
+		ntab, err := devp2p.ListenV4(conn, srv.localnode, cfg, srv.ExtraConfig)
 		if err != nil {
 			return err
 		}
