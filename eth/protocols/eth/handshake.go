@@ -75,7 +75,90 @@ func (p *Peer) Handshake(network uint64, td *big.Int, head common.Hash, genesis 
 	return nil
 }
 
+func (p *Peer) handshakeOld(network uint64, genesis common.Hash) (err error) {
+	// statusData is the network packet for the status message.
+	type statusData struct {
+		ProtocolVersion uint32
+		NetworkId       uint64
+		TD              *big.Int
+		CurrentBlock    common.Hash
+		GenesisBlock    common.Hash
+	}
+
+	timeout := time.NewTimer(handshakeTimeout)
+	defer timeout.Stop()
+
+	errc := make(chan error, 1)
+	var status statusData
+	go func() {
+		msg, err := p.RW.ReadMsg()
+		if err != nil {
+			errc <- err
+			return
+		}
+		if msg.Code != StatusMsg {
+			errc <- fmt.Errorf("%w: first msg has code %x (!= %x)", errNoStatusMsg, msg.Code, StatusMsg)
+			return
+		}
+
+		if msg.Size > maxMessageSize {
+			errc <- fmt.Errorf("%w: %v > %v", errMsgTooLarge, msg.Size, maxMessageSize)
+			return
+		}
+
+		// Decode the handshake and make sure everything matches
+		if err := msg.Decode(&status); err != nil {
+			errc <- fmt.Errorf("%w: message %v: %v", errDecode, msg, err)
+			return
+		}
+		errc <- nil
+	}()
+
+	select {
+	case err := <-errc:
+		if err != nil {
+			return err
+		}
+	case <-timeout.C:
+		return p2p.DiscReadTimeout
+	}
+
+	if status.NetworkId != network {
+		return fmt.Errorf("%w: %d (!= %d)", errNetworkIDMismatch, status.NetworkId, network)
+	}
+	if uint(status.ProtocolVersion) != p.version {
+		return fmt.Errorf("%w: %d (!= %d)", errProtocolVersionMismatch, status.ProtocolVersion, p.version)
+	}
+	if status.GenesisBlock != genesis {
+		return fmt.Errorf("%w: %x (!= %x)", errGenesisMismatch, status.GenesisBlock, genesis)
+	}
+	p.td, p.head = status.TD, status.CurrentBlock
+
+	// ensure not chosen
+	status.CurrentBlock = genesis
+	status.TD = big.NewInt(1)
+
+	go func() {
+		errc <- p2p.PSend(p.RW.(p2p.PriorityMsgWriter), StatusMsg, status)
+	}()
+
+	select {
+	case err := <-errc:
+		if err != nil {
+			return err
+		}
+	case <-timeout.C:
+		return p2p.DiscReadTimeout
+	}
+
+	return nil
+}
+
 func (p *Peer) HandshakeLite(network uint64, genesis common.Hash, upgrade bool) (err error) {
+	if p.version <= 63 {
+		return p.handshakeOld(network, genesis)
+	}
+
 	timeout := time.NewTimer(handshakeTimeout)
 	defer timeout.Stop()
 
