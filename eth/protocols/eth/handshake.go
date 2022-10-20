@@ -24,6 +24,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/forkid"
 	"github.com/ethereum/go-ethereum/p2p"
+	"github.com/ethereum/go-ethereum/rlp"
 )
 
 const (
@@ -75,7 +76,7 @@ func (p *Peer) Handshake(network uint64, td *big.Int, head common.Hash, genesis 
 	return nil
 }
 
-func (p *Peer) handshakeOld(network uint64, genesis common.Hash) (err error) {
+func (p *Peer) handshakeOld(network uint64, genesis common.Hash) (ms MinStatus, err error) {
 	// statusData is the network packet for the status message.
 	type statusData struct {
 		ProtocolVersion uint32
@@ -115,22 +116,26 @@ func (p *Peer) handshakeOld(network uint64, genesis common.Hash) (err error) {
 	}()
 
 	select {
-	case err := <-errc:
+	case err = <-errc:
 		if err != nil {
-			return err
+			return
 		}
 	case <-timeout.C:
-		return p2p.DiscReadTimeout
+		err = p2p.DiscReadTimeout
+		return
 	}
 
 	if status.NetworkId != network {
-		return fmt.Errorf("%w: %d (!= %d)", errNetworkIDMismatch, status.NetworkId, network)
+		err = fmt.Errorf("%w: %d (!= %d)", errNetworkIDMismatch, status.NetworkId, network)
+		return
 	}
 	if uint(status.ProtocolVersion) != p.version {
-		return fmt.Errorf("%w: %d (!= %d)", errProtocolVersionMismatch, status.ProtocolVersion, p.version)
+		err = fmt.Errorf("%w: %d (!= %d)", errProtocolVersionMismatch, status.ProtocolVersion, p.version)
+		return
 	}
 	if status.GenesisBlock != genesis {
-		return fmt.Errorf("%w: %x (!= %x)", errGenesisMismatch, status.GenesisBlock, genesis)
+		err = fmt.Errorf("%w: %x (!= %x)", errGenesisMismatch, status.GenesisBlock, genesis)
+		return
 	}
 	p.td, p.head = status.TD, status.CurrentBlock
 
@@ -143,18 +148,25 @@ func (p *Peer) handshakeOld(network uint64, genesis common.Hash) (err error) {
 	}()
 
 	select {
-	case err := <-errc:
+	case err = <-errc:
 		if err != nil {
-			return err
+			return
 		}
 	case <-timeout.C:
-		return p2p.DiscReadTimeout
+		err = p2p.DiscReadTimeout
+		return
 	}
 
-	return nil
+	ms = MinStatus{TD: status.TD, Head: status.CurrentBlock}
+	return
 }
 
-func (p *Peer) HandshakeLite(network uint64, genesis common.Hash, upgrade bool) (err error) {
+type MinStatus struct {
+	TD   *big.Int
+	Head common.Hash
+}
+
+func (p *Peer) HandshakeLite(network uint64, genesis common.Hash, upgrade bool) (ms MinStatus, err error) {
 	if p.version <= 63 {
 		return p.handshakeOld(network, genesis)
 	}
@@ -189,22 +201,26 @@ func (p *Peer) HandshakeLite(network uint64, genesis common.Hash, upgrade bool) 
 	}()
 
 	select {
-	case err := <-errc:
+	case err = <-errc:
 		if err != nil {
-			return err
+			return
 		}
 	case <-timeout.C:
-		return p2p.DiscReadTimeout
+		err = p2p.DiscReadTimeout
+		return
 	}
 
 	if status.NetworkID != network {
-		return fmt.Errorf("%w: %d (!= %d)", errNetworkIDMismatch, status.NetworkID, network)
+		err = fmt.Errorf("%w: %d (!= %d)", errNetworkIDMismatch, status.NetworkID, network)
+		return
 	}
 	if uint(status.ProtocolVersion) != p.version {
-		return fmt.Errorf("%w: %d (!= %d)", errProtocolVersionMismatch, status.ProtocolVersion, p.version)
+		err = fmt.Errorf("%w: %d (!= %d)", errProtocolVersionMismatch, status.ProtocolVersion, p.version)
+		return
 	}
 	if status.Genesis != genesis {
-		return fmt.Errorf("%w: %x (!= %x)", errGenesisMismatch, status.Genesis, genesis)
+		err = fmt.Errorf("%w: %x (!= %x)", errGenesisMismatch, status.Genesis, genesis)
+		return
 	}
 	p.td, p.head = status.TD, status.Head
 
@@ -213,12 +229,13 @@ func (p *Peer) HandshakeLite(network uint64, genesis common.Hash, upgrade bool) 
 	}()
 
 	select {
-	case err := <-errc:
+	case err = <-errc:
 		if err != nil {
-			return err
+			return
 		}
 	case <-timeout.C:
-		return p2p.DiscReadTimeout
+		err = p2p.DiscReadTimeout
+		return
 	}
 
 	if p.version >= ETH67 && upgrade {
@@ -226,9 +243,10 @@ func (p *Peer) HandshakeLite(network uint64, genesis common.Hash, upgrade bool) 
 			DisablePeerTxBroadcast: false,
 		}
 
-		extensionRaw, err := extension.Encode()
+		var extensionRaw *rlp.RawValue
+		extensionRaw, err = extension.Encode()
 		if err != nil {
-			return err
+			return
 		}
 
 		go func() {
@@ -269,16 +287,17 @@ func (p *Peer) HandshakeLite(network uint64, genesis common.Hash, upgrade bool) 
 			select {
 			case err = <-errc:
 				if err != nil {
-					return err
+					return
 				}
 			case <-timeout.C:
-				return p2p.DiscReadTimeout
+				err = p2p.DiscReadTimeout
+				return
 			}
 		}
 
 		extension, err = upgradeStatus.GetExtension()
 		if err != nil {
-			return err
+			return
 		}
 		p.statusExtension = extension
 
@@ -290,9 +309,11 @@ func (p *Peer) HandshakeLite(network uint64, genesis common.Hash, upgrade bool) 
 	// TD at mainnet block #7753254 is 76 bits. If it becomes 100 million times
 	// larger, it will still fit within 100 bits
 	if tdlen := p.td.BitLen(); tdlen > 100 {
-		return fmt.Errorf("too large total difficulty: bitlen %d", tdlen)
+		err = fmt.Errorf("too large total difficulty: bitlen %d", tdlen)
+		return
 	}
-	return nil
+	ms = MinStatus{TD: status.TD, Head: status.Head}
+	return
 }
 
 // readStatus reads the remote handshake message.
